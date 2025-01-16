@@ -44,6 +44,35 @@ impl SqliteDatabase {
             )),
         }
     }
+
+    fn get_current_connection(&self) -> Result<PooledConnection<SqliteConnectionManager>, DbError> {
+        let transaction_guard = self.current_transaction.lock()
+            .map_err(|e| DbError::TransactionError(e.to_string()))?;
+            
+        if let Some(_) = *transaction_guard {
+            Err(DbError::TransactionError("Cannot get connection during transaction".to_string()))
+        } else {
+            self.pool.get()
+                .map_err(|e| DbError::ConnectionError(e.to_string()))
+        }
+    }
+
+    fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
+    where
+        F: FnOnce(&PooledConnection<SqliteConnectionManager>) -> Result<T, DbError>
+    {
+        let transaction_guard = self.current_transaction.lock()
+            .map_err(|e| DbError::TransactionError(e.to_string()))?;
+            
+        let conn = if let Some(ref conn) = *transaction_guard {
+            conn
+        } else {
+            &self.pool.get()
+                .map_err(|e| DbError::ConnectionError(e.to_string()))?
+        };
+
+        f(conn)
+    }
 }
 
 impl RelationalDatabase for SqliteDatabase {
@@ -106,61 +135,59 @@ impl RelationalDatabase for SqliteDatabase {
     }
 
     fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
-        let conn = self.pool.get()
-            .map_err(|e| DbError::ConnectionError(e.to_string()))?;
-            
-        let params: Vec<Box<dyn ToSql>> = params.iter()
-            .map(SqliteDatabase::value_to_sql)
-            .collect();
+        self.execute_with_connection(|conn| {
+            let params: Vec<Box<dyn ToSql>> = params.iter()
+                .map(SqliteDatabase::value_to_sql)
+                .collect();
 
-        conn.execute(query, rusqlite::params_from_iter(params.iter()))
-            .map(|rows| rows as u64)
-            .map_err(|e| DbError::QueryError(e.to_string()))
+            conn.execute(query, rusqlite::params_from_iter(params.iter()))
+                .map(|rows| rows as u64)
+                .map_err(|e| DbError::QueryError(e.to_string()))
+        })
     }
 
     fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
-        let conn = self.pool.get()
-            .map_err(|e| DbError::ConnectionError(e.to_string()))?;
+        self.execute_with_connection(|conn| {
+            let mut stmt = conn.prepare(query)
+                .map_err(|e| DbError::QueryError(e.to_string()))?;
             
-        let mut stmt = conn.prepare(query)
+            let column_names: Vec<String> = stmt.column_names()
+                .iter()
+                .map(|&name| name.to_string())
+                .collect();
+
+            let column_count = stmt.column_count();
+
+            let params: Vec<Box<dyn ToSql>> = params.iter()
+                .map(SqliteDatabase::value_to_sql)
+                .collect();
+
+            let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| {
+                let mut values = Vec::new();
+                for i in 0..column_count {
+                    let value = Self::convert_sql_to_value(row.get_ref(i)
+                        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
+                            i,
+                            rusqlite::types::Type::Text,
+                            Box::new(e)
+                        ))?)
+                        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
+                            i,
+                            rusqlite::types::Type::Text,
+                            Box::new(e)
+                        ))?;
+                    values.push(value);
+                }
+                Ok(Row { columns: column_names.clone(), values })
+            })
             .map_err(|e| DbError::QueryError(e.to_string()))?;
-            
-        let column_names: Vec<String> = stmt.column_names()
-            .iter()
-            .map(|&name| name.to_string())
-            .collect();
 
-        let column_count = stmt.column_count();
-
-        let params: Vec<Box<dyn ToSql>> = params.iter()
-            .map(SqliteDatabase::value_to_sql)
-            .collect();
-
-        let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| {
-            let mut values = Vec::new();
-            for i in 0..column_count {
-                let value = Self::convert_sql_to_value(row.get_ref(i)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
-                        i,
-                        rusqlite::types::Type::Text,
-                        Box::new(e)
-                    ))?)
-                    .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
-                        i,
-                        rusqlite::types::Type::Text,
-                        Box::new(e)
-                    ))?;
-                values.push(value);
+            let mut results = Vec::new();
+            for row in rows {
+                results.push(row.map_err(|e| DbError::QueryError(e.to_string()))?);
             }
-            Ok(Row { columns: column_names.clone(), values })
+            Ok(results)
         })
-        .map_err(|e| DbError::QueryError(e.to_string()))?;
-
-        let mut results = Vec::new();
-        for row in rows {
-            results.push(row.map_err(|e| DbError::QueryError(e.to_string()))?);
-        }
-        Ok(results)
     }
 
     fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError> {
