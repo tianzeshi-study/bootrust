@@ -1,4 +1,4 @@
-mod sqlite;
+pub mod sqlite;
 // 定义数据库连接配置
 #[derive(Default)]
 pub struct DatabaseConfig {
@@ -46,6 +46,7 @@ pub enum DbError {
     QueryError(String),
     TransactionError(String),
     PoolError(String),
+    ConversionError(String),
     // 其他错误类型...
 }
 

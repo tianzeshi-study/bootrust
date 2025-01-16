@@ -2,8 +2,8 @@ pub mod entity;
 pub mod repository;
 pub mod service;
 pub mod controller;
-mod database;
-mod dao;
+pub mod database;
+pub mod dao;
 
 use std::sync::{Arc, Mutex};
 
