@@ -19,11 +19,22 @@ struct User {
 }
 
 // UserDao实现
-struct UserDao;
+struct UserDao{
+    database: SqliteDatabase,
+}
 
 impl Dao<User> for UserDao {
     type Database = SqliteDatabase;
-    
+
+    fn new(database: Self::Database) -> Self {
+        UserDao {
+            database
+        }
+    }
+
+fn database(&self) -> &Self::Database { 
+&self.database 
+}
     fn row_to_entity(row: Row) -> Result<User, DbError> {
         if row.values.len() != 5 {
             return Err(DbError::ConversionError("Invalid number of columns".to_string()));
@@ -120,10 +131,10 @@ fn create_test_user() -> User {
 #[test]
 fn test_create_user() {
     let db = setup_test_db();
-    let dao = UserDao;
+    let dao = UserDao::new(db);
     let user = create_test_user();
     
-    let result = dao.create(&db, &user);
+    let result = dao.create(&user);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), 1);
 }
@@ -131,14 +142,14 @@ fn test_create_user() {
 #[test]
 fn test_find_user_by_id() {
     let db = setup_test_db();
-    let dao = UserDao;
+    let dao = UserDao::new(db);
     let user = create_test_user();
     
     // 先创建用户
-    dao.create(&db, &user).unwrap();
+    dao.create(&user).unwrap();
     
     // 查找用户
-    let found = dao.find_by_id(&db, Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Integer(1)).unwrap();
     assert!(found.is_some());
     
     let found_user = found.unwrap();
@@ -152,7 +163,7 @@ fn test_find_user_by_id() {
     #[test]
     fn test_find_all_users() {
         let db = setup_test_db();
-        let dao = UserDao;
+        let dao = UserDao::new(db);
         
         // 创建多个用户
         let user1 = create_test_user();
@@ -160,11 +171,11 @@ fn test_find_user_by_id() {
         user2.id = 2;
         user2.email = "test2@example.com".to_string();
         
-        dao.create(&db, &user1).unwrap();
-        dao.create(&db, &user2).unwrap();
+        dao.create(&user1).unwrap();
+        dao.create(&user2).unwrap();
         
         // 查找所有用户
-        let users = dao.find_all(&db).unwrap();
+        let users = dao.find_all().unwrap();
         assert_eq!(users.len(), 2);
     }
 
@@ -172,54 +183,54 @@ fn test_find_user_by_id() {
     fn test_update_user() {
         let db = setup_test_db();
         let mut user = create_test_user();
-        let dao = UserDao;
+        let dao = UserDao::new(db);
         
         // 先创建用户
         dbg!(&user);
-        dao.create(&db, &user).unwrap();
+        dao.create(&user).unwrap();
 
         
         // 更新用户信息
         user.email = "updated@example.com".to_string();
-        let result = dao.update(&db, &user);
+        // let result = dao.update(&db, &user);
+        let result = dao.update(&user);
 
         assert!(result.is_ok());
         
         // 验证更新
-        let updated = dao.find_by_id(&db, Value::Integer(1)).unwrap().unwrap();
+        let updated = dao.find_by_id(Value::Integer(1)).unwrap().unwrap();
         assert_eq!(updated.email, "updated@example.com");
     }
 
     #[test]
     fn test_delete_user() {
         let db = setup_test_db();
-        let dao = UserDao;
+        let dao = UserDao::new(db);
         let user = create_test_user();
         
         // 先创建用户
-        dao.create(&db, &user).unwrap();
+        dao.create(&user).unwrap();
         
         // 删除用户
-        let result = dao.delete(&db, Value::Integer(1));
+        let result = dao.delete(Value::Integer(1));
         assert!(result.is_ok());
         
         // 验证删除
-        let found = dao.find_by_id(&db, Value::Integer(1)).unwrap();
+        let found = dao.find_by_id(Value::Integer(1)).unwrap();
         assert!(found.is_none());
     }
 
     #[test]
     fn test_find_by_condition() {
         let db = setup_test_db();
-        let dao = UserDao;
+        let dao = UserDao::new(db);
         
         // 创建测试用户
         let user = create_test_user();
-        dao.create(&db, &user).unwrap();
+        dao.create(&user).unwrap();
         
         // 按条件查询
         let users = dao.find_by_condition(
-            &db,
             "username = ?",
             vec![Value::Text("test_user".to_string())]
         ).unwrap();

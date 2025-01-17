@@ -9,6 +9,8 @@ serde ={version="1.0.217", features = ["derive"] }
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.22"
+mysql = "23.0"
+r2d2_mysql = "23.0"
 
 [dev-dependencies]
 tempfile = "3.2"

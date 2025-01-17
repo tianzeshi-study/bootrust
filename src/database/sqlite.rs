@@ -7,7 +7,7 @@ use crate::database::{
 };
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug)]
+#[derive(Debug, Clone )]
 pub struct SqliteDatabase {
     pool: Arc<Pool<SqliteConnectionManager>>,
     current_transaction: Arc<Mutex<Option<PooledConnection<SqliteConnectionManager>>>>,

@@ -1,4 +1,5 @@
 pub mod sqlite;
+pub mod mysql;
 // 定义数据库连接配置
 #[derive(Default)]
 pub struct DatabaseConfig {

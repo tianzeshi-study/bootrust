@@ -7,7 +7,12 @@ pub trait Dao<T> where T: Sized {
     /// 关联的数据库类型
     type Database: RelationalDatabase;
     
-    /// 将数据库行转换为实体对象
+    /// 数据库引用
+    fn database(&self) -> &Self::Database;
+
+    /// 创建新的 DAO 实例
+    fn new(database: Self::Database) -> Self;
+    
     fn row_to_entity(row: Row) -> Result<T, DbError>;
     
     /// 将实体对象转换为数据库值
@@ -21,7 +26,7 @@ pub trait Dao<T> where T: Sized {
     fn primary_key_column() -> String;
     
     /// 创建新记录
-    fn create(&self, db: &Self::Database, entity: &T) -> Result<u64, DbError> {
+    fn create(&self, entity: &T) -> Result<u64, DbError> {
         let values = Self::entity_to_values(entity);
         let placeholders: Vec<String> = (1..=values.len())
             .map(|i| format!("${}", i))
@@ -33,18 +38,18 @@ pub trait Dao<T> where T: Sized {
             placeholders.join(", ")
         );
         
-        db.execute(&query, values)
+        self.database().execute(&query, values)
     }
     
     /// 根据ID查找记录
-    fn find_by_id(&self, db: &Self::Database, id: Value) -> Result<Option<T>, DbError> {
+    fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
         let query = format!(
             "SELECT * FROM {} WHERE {} = $1",
             Self::table_name(),
             Self::primary_key_column()
         );
         
-        let result = db.query_one(&query, vec![id])?;
+        let result = self.database().query_one(&query, vec![id])?;
         match result {
             Some(row) => Ok(Some(Self::row_to_entity(row)?)),
             None => Ok(None)
@@ -52,9 +57,9 @@ pub trait Dao<T> where T: Sized {
     }
     
     /// 查找所有记录
-    fn find_all(&self, db: &Self::Database) -> Result<Vec<T>, DbError> {
+    fn find_all(&self) -> Result<Vec<T>, DbError> {
         let query = format!("SELECT * FROM {}", Self::table_name());
-        let rows = db.query(&query, vec![])?;
+        let rows = self.database().query(&query, vec![])?;
         
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
@@ -64,13 +69,12 @@ pub trait Dao<T> where T: Sized {
     }
     
     /// 更新记录
-    fn update(&self, db: &Self::Database, entity: &T) -> Result<u64, DbError> {
+    fn update(&self, entity: &T) -> Result<u64, DbError> {
         let map = Self::entity_to_map(entity);
         let mut values: Vec<Value> = Vec::new();
         
-        // 构建 SET 子句，同时收集对应的值
         let update_columns: Vec<String> = map.iter()
-            .filter(|(k, _)| *k != &Self::primary_key_column()) // 排除主键
+            .filter(|(k, _)| *k != &Self::primary_key_column())
             .enumerate()
             .map(|(i, (k, v))| {
                 values.push(v.clone());
@@ -78,7 +82,6 @@ pub trait Dao<T> where T: Sized {
             })
             .collect();
         
-        // 添加 WHERE 条件的值（主键值）
         if let Some(id_value) = map.get(&Self::primary_key_column()) {
             values.push(id_value.clone());
         }
@@ -88,27 +91,26 @@ pub trait Dao<T> where T: Sized {
             Self::table_name(),
             update_columns.join(", "),
             Self::primary_key_column(),
-            values.len() // WHERE 子句使用最后一个参数
+            values.len()
         );
         
-        db.execute(&query, values)
+        self.database().execute(&query, values)
     }
     
     /// 删除记录
-    fn delete(&self, db: &Self::Database, id: Value) -> Result<u64, DbError> {
+    fn delete(&self, id: Value) -> Result<u64, DbError> {
         let query = format!(
             "DELETE FROM {} WHERE {} = $1",
             Self::table_name(),
             Self::primary_key_column()
         );
         
-        db.execute(&query, vec![id])
+        self.database().execute(&query, vec![id])
     }
     
     /// 自定义条件查询
     fn find_by_condition(
         &self,
-        db: &Self::Database,
         condition: &str,
         params: Vec<Value>
     ) -> Result<Vec<T>, DbError> {
@@ -118,7 +120,7 @@ pub trait Dao<T> where T: Sized {
             condition
         );
         
-        let rows = db.query(&query, params)?;
+        let rows = self.database().query(&query, params)?;
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
             entities.push(Self::row_to_entity(row)?);
