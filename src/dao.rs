@@ -10,6 +10,10 @@ pub trait Dao<T> where T: Sized {
     /// 数据库引用
     fn database(&self) -> &Self::Database;
 
+    fn placeholders(&self, vals: &Vec<Value>) -> Vec<String> {
+        self.database().placeholders(vals )
+    }
+
     /// 创建新的 DAO 实例
     fn new(database: Self::Database) -> Self;
     
@@ -28,25 +32,32 @@ pub trait Dao<T> where T: Sized {
     /// 创建新记录
     fn create(&self, entity: &T) -> Result<u64, DbError> {
         let values = Self::entity_to_values(entity);
-        let placeholders: Vec<String> = (1..=values.len())
-            .map(|i| format!("${}", i))
-            .collect();
+        // let placeholders: Vec<String> = (1..=values.len())
+            // .map(|i| format!("${}", i))
+            // .map(|i| "?".to_string() )
+            // .collect();
+            // let placeholders: Vec<String> =  vec!["?".to_string();values.len()];
+            let placeholders: Vec<String> = self.placeholders(&values );
             
         let query = format!(
             "INSERT INTO {} VALUES ({})",
             Self::table_name(),
             placeholders.join(", ")
         );
+
         
         self.database().execute(&query, values)
     }
     
     /// 根据ID查找记录
     fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
+        let placeholder = self.placeholders(&vec![id.clone() ])[0].clone(); 
         let query = format!(
-            "SELECT * FROM {} WHERE {} = $1",
+            // "SELECT * FROM {} WHERE {} = ?",
+            "SELECT * FROM {} WHERE {} = {}",
             Self::table_name(),
-            Self::primary_key_column()
+            Self::primary_key_column(),
+            placeholder
         );
         
         let result = self.database().query_one(&query, vec![id])?;
@@ -70,28 +81,41 @@ pub trait Dao<T> where T: Sized {
     
     /// 更新记录
     fn update(&self, entity: &T) -> Result<u64, DbError> {
-        let map = Self::entity_to_map(entity);
+        let map = Self::entity_to_map(entity.clone());
         let mut values: Vec<Value> = Vec::new();
+        // let values: Vec<Value> = self.entity_to_values(entity);
         
         let update_columns: Vec<String> = map.iter()
             .filter(|(k, _)| *k != &Self::primary_key_column())
             .enumerate()
             .map(|(i, (k, v))| {
+                let placeholder = self.placeholders(&vec![v.clone();i+1])[i].clone(); 
+
                 values.push(v.clone());
-                format!("{} = ${}", k, i + 1)
+                // format!("{} = ${}", k, i + 1)
+                                // format!("{} = ?", k)
+                                format!("{} = {}", k, placeholder)
             })
             .collect();
         
         if let Some(id_value) = map.get(&Self::primary_key_column()) {
             values.push(id_value.clone());
         }
+        let mut placeholders = self.placeholders(&values);
         
         let query = format!(
-            "UPDATE {} SET {} WHERE {} = ${}",
+            // "UPDATE {} SET {} WHERE {} = ?",
+            "UPDATE {} SET {} WHERE {} = {}",
             Self::table_name(),
             update_columns.join(", "),
             Self::primary_key_column(),
-            values.len()
+            // values.len()
+            if let Some(primary_key_placeholder) = placeholders.pop() {
+                primary_key_placeholder
+            } else {
+                panic!("primary_key {}", &Self::primary_key_column());
+            }
+
         );
         
         self.database().execute(&query, values)
@@ -100,7 +124,7 @@ pub trait Dao<T> where T: Sized {
     /// 删除记录
     fn delete(&self, id: Value) -> Result<u64, DbError> {
         let query = format!(
-            "DELETE FROM {} WHERE {} = $1",
+            "DELETE FROM {} WHERE {} = ?",
             Self::table_name(),
             Self::primary_key_column()
         );

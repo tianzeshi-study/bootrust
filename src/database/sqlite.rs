@@ -77,6 +77,13 @@ impl SqliteDatabase {
 }
 
 impl RelationalDatabase for SqliteDatabase {
+
+    fn placeholders(&self, vals: &Vec<Value>) -> Vec<String> {
+        let placeholders: Vec<String> = (1..=vals.len())
+        .map(|i| format!("${}", i))
+                    .collect();
+                    placeholders
+    }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
         let pool = Self::new_pool(&config.database_name, 10)
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;

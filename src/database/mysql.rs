@@ -94,6 +94,9 @@ where
 }
 
 impl RelationalDatabase for MySqlDatabase {
+    fn placeholders(&self, values : &Vec<Value>) -> Vec<String> {
+        vec!["?".to_string();values.len()]
+    }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
         let pool = Self::new_pool(&config)
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
