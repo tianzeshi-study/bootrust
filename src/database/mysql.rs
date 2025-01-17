@@ -216,24 +216,205 @@ impl RelationalDatabase for MySqlDatabase {
 mod tests {
     use super::*;
     use chrono::Utc;
+use serial_test::serial;
+
 
     fn setup_test_db() -> MySqlDatabase {
         let config = DatabaseConfig {
             host: "localhost".to_string(),
             port: 3306,
-            username: "test".to_string(),
-            password: "test".to_string(),
+            username: "root".to_string(),
+            password: "root".to_string(),
             database_name: "test".to_string(),
         };
         MySqlDatabase::connect(config).unwrap()
     }
 
     #[test]
-    #[ignore] // 需要MySQL服务器才能运行
+    // #[ignore] // 需要MySQL服务器才能运行
+    #[serial]
     fn test_basic_connection() {
         let db = setup_test_db();
         assert!(db.ping().is_ok());
     }
 
-    
+    #[test]
+    // #[ignore]
+    #[serial]
+    fn test_execute() {
+        let db = setup_test_db();
+        db.execute("DROP TABLE IF EXISTS users", vec![]).unwrap();
+        db.execute(
+            "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT)",
+            vec![],
+        )
+        .unwrap();
+
+        let affected_rows = db
+            .execute("INSERT INTO users (name, age) VALUES (?, ?)", vec![
+                Value::Text("Alice".to_string()),
+                Value::Integer(30),
+            ])
+            .unwrap();
+        assert_eq!(affected_rows, 1);
+
+        let affected_rows = db
+            .execute("UPDATE users SET age = ? WHERE name = ?", vec![
+                Value::Integer(31),
+                Value::Text("Alice".to_string()),
+            ])
+            .unwrap();
+        assert_eq!(affected_rows, 1);
+
+        db.execute("DROP TABLE users", vec![]).unwrap();
+    }
+
+    #[test]
+    // #[ignore]
+    #[serial]
+    fn test_query() {
+        let db = setup_test_db();
+        db.execute("DROP TABLE IF EXISTS users", vec![]).unwrap();
+        db.execute(
+            "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT, created_at DATETIME)",
+            vec![],
+        )
+        .unwrap();
+
+        let now = Utc::now();
+        db.execute(
+            "INSERT INTO users (name, age, created_at) VALUES (?, ?, ?)",
+            vec![
+                Value::Text("Alice".to_string()),
+                Value::Integer(30),
+                Value::DateTime(now),
+            ],
+        )
+        .unwrap();
+
+        let rows = db
+            .query("SELECT id, name, age, created_at FROM users", vec![])
+            .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].columns, vec!["id", "name", "age", "created_at"]);
+        assert_eq!(rows[0].values.len(), 4);
+        assert!(matches!(rows[0].values[0], Value::Integer(_)));
+        assert!(matches!(rows[0].values[1], Value::Text(_)));
+        assert!(matches!(rows[0].values[2], Value::Integer(_)));
+        assert!(matches!(rows[0].values[3], Value::DateTime(_)));
+
+        if let Value::Text(name) = &rows[0].values[1] {
+            assert_eq!(name, "Alice");
+        } else {
+            panic!("Expected name to be a string");
+        }
+
+        if let Value::Integer(age) = &rows[0].values[2] {
+            assert_eq!(age, &30);
+        } else {
+            panic!("Expected age to be an integer");
+        }
+
+        db.execute("DROP TABLE users", vec![]).unwrap();
+    }
+
+    #[test]
+    // #[ignore]
+    #[serial]
+    fn test_query_one() {
+        let db = setup_test_db();
+        db.execute("DROP TABLE IF EXISTS users", vec![]).unwrap();
+        db.execute(
+            "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))",
+            vec![],
+        )
+        .unwrap();
+
+        db.execute("INSERT INTO users (name) VALUES (?), (?)", vec![
+            Value::Text("Alice".to_string()),
+            Value::Text("Bob".to_string()),
+        ])
+        .unwrap();
+
+        let row = db
+            .query_one("SELECT id, name FROM users WHERE name = ?", vec![
+                Value::Text("Alice".to_string()),
+            ])
+            .unwrap();
+        assert!(row.is_some());
+
+        if let Some(row) = row {
+            assert_eq!(row.columns, vec!["id", "name"]);
+            if let Value::Text(name) = &row.values[1] {
+                assert_eq!(name, "Alice");
+            } else {
+                panic!("Expected name to be a string");
+            }
+        }
+
+        let none = db
+            .query_one("SELECT * FROM users WHERE name = ?", vec![
+                Value::Text("Charlie".to_string()),
+            ])
+            .unwrap();
+        assert!(none.is_none());
+
+        db.execute("DROP TABLE users", vec![]).unwrap();
+    }
+
+    #[test]
+    // #[ignore]
+    #[serial]
+    fn test_transaction() {
+        let db = setup_test_db();
+        db.execute("DROP TABLE IF EXISTS users", vec![]).unwrap();
+        db.execute(
+            "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))",
+            vec![],
+        )
+        .unwrap();
+
+        db.begin_transaction().unwrap();
+        db.execute("INSERT INTO users (name) VALUES (?)", vec![
+            Value::Text("Alice".to_string()),
+        ])
+        .unwrap();
+        db.rollback().unwrap();
+
+        let rows = db.query("SELECT * FROM users", vec![]).unwrap();
+        assert_eq!(rows.len(), 0);
+
+        db.begin_transaction().unwrap();
+        db.execute("INSERT INTO users (name) VALUES (?)", vec![
+            Value::Text("Bob".to_string()),
+        ])
+        .unwrap();
+        db.commit().unwrap();
+
+        let rows = db.query("SELECT * FROM users", vec![]).unwrap();
+        assert_eq!(rows.len(), 1);
+
+        db.execute("DROP TABLE users", vec![]).unwrap();
+    }
+
+    #[test]
+    // #[ignore]
+    #[serial]
+    fn test_value_conversion() {
+        let db = setup_test_db();
+
+        let now = Utc::now();
+        let mysql_now = MySqlDatabase::value_to_mysql(&Value::DateTime(now));
+        let converted_now = MySqlDatabase::convert_mysql_to_value(mysql_now).unwrap();
+
+        if let Value::DateTime(dt) = converted_now {
+            assert_eq!(dt.date_naive(), now.date_naive());
+            // assert_eq!(dt.time(), now.time());
+            // 比较时间时，允许1微秒的误差
+            assert!((dt.timestamp_micros() - now.timestamp_micros()).abs() <= 1);
+        } else {
+            panic!("Expected DateTime");
+        }
+    }
+
 } 

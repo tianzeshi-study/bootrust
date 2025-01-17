@@ -12,5 +12,7 @@ r2d2_sqlite = "0.22"
 mysql = "23.0"
 r2d2_mysql = "23.0"
 
+
 [dev-dependencies]
+serial_test = "3.2.0"
 tempfile = "3.2"
