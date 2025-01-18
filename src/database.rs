@@ -20,7 +20,7 @@ pub enum DatabaseType {
 
 // 定义关系型数据库通用接口
 pub trait RelationalDatabase {
-    fn placeholders(&self, vals: &Vec<Value>) -> Vec<String>;
+    fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
     // 连接相关
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> where Self: Sized;
     fn close(&self) -> Result<(), DbError>;

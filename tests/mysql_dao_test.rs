@@ -78,6 +78,16 @@ fn database(&self) -> &Self::Database {
         ]
     }
 
+    fn entity_to_keys(entity: &User) -> Vec<String > {
+        vec![
+            "id".to_string(),
+        "username".to_string(),
+        "email".to_string(),
+        "created_at".to_string(),
+        "active".to_string()
+        ]    
+    }
+
     fn entity_to_map(entity: &User) -> HashMap<String, Value> {
         let mut map = HashMap::new();
         map.insert("id".to_string(), Value::Integer(entity.id));
@@ -87,7 +97,18 @@ fn database(&self) -> &Self::Database {
         map.insert("active".to_string(), Value::Integer(entity.active));
         map
     }
-    
+
+    fn entity_to_map1(entity: &User) -> Vec<(String, Value)> {
+        let mut map = Vec::new();
+        map.push(("id".to_string(), Value::Integer(entity.id)));
+        map.push(("username".to_string(), Value::Text(entity.username.clone())));
+        map.push(("email".to_string(), Value::Text(entity.email.clone())));
+        map.push(("created_at".to_string(), Value::Text(entity.created_at.clone())));
+        map.push(("active".to_string(), Value::Integer(entity.active)));
+        map
+    }
+
+
     fn table_name() -> String {
         "users".to_string()
     }

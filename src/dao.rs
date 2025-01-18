@@ -10,8 +10,8 @@ pub trait Dao<T> where T: Sized {
     /// 数据库引用
     fn database(&self) -> &Self::Database;
 
-    fn placeholders(&self, vals: &Vec<Value>) -> Vec<String> {
-        self.database().placeholders(vals )
+    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
+        self.database().placeholders(keys)
     }
 
     /// 创建新的 DAO 实例
@@ -21,7 +21,9 @@ pub trait Dao<T> where T: Sized {
     
     /// 将实体对象转换为数据库值
     fn entity_to_values(entity: &T) -> Vec<Value>;
+    fn entity_to_keys(entity: &T) -> Vec<String >;
     fn entity_to_map(entity: &T) -> HashMap<String, Value>;
+    fn entity_to_map1(entity: &T) -> Vec<(String, Value)>;
     
     /// 获取表名
     fn table_name() -> String;
@@ -32,12 +34,13 @@ pub trait Dao<T> where T: Sized {
     /// 创建新记录
     fn create(&self, entity: &T) -> Result<u64, DbError> {
         let values = Self::entity_to_values(entity);
+        let keys= Self::entity_to_keys(entity);
         // let placeholders: Vec<String> = (1..=values.len())
             // .map(|i| format!("${}", i))
             // .map(|i| "?".to_string() )
             // .collect();
             // let placeholders: Vec<String> =  vec!["?".to_string();values.len()];
-            let placeholders: Vec<String> = self.placeholders(&values );
+            let placeholders: Vec<String> = self.placeholders(&keys );
             
         let query = format!(
             "INSERT INTO {} VALUES ({})",
@@ -51,7 +54,8 @@ pub trait Dao<T> where T: Sized {
     
     /// 根据ID查找记录
     fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
-        let placeholder = self.placeholders(&vec![id.clone() ])[0].clone(); 
+        // let placeholder = self.placeholders(&vec![id.clone() ])[0].clone();
+        let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone(); 
         let query = format!(
             // "SELECT * FROM {} WHERE {} = ?",
             "SELECT * FROM {} WHERE {} = {}",
@@ -82,14 +86,16 @@ pub trait Dao<T> where T: Sized {
     /// 更新记录
     fn update(&self, entity: &T) -> Result<u64, DbError> {
         let map = Self::entity_to_map(entity.clone());
+        let map1 = Self::entity_to_map1(entity.clone());
         let mut values: Vec<Value> = Vec::new();
         // let values: Vec<Value> = self.entity_to_values(entity);
-        
-        let update_columns: Vec<String> = map.iter()
+/*        
+        let update_columns1: Vec<String> = map.iter()
             .filter(|(k, _)| *k != &Self::primary_key_column())
             .enumerate()
             .map(|(i, (k, v))| {
-                let placeholder = self.placeholders(&vec![v.clone();i+1])[i].clone(); 
+                // let placeholder = self.placeholders(&vec![v.clone();i+1])[i].clone();
+                let placeholder = self.placeholders(&vec![k.clone();i+1])[i].clone();  
 
                 values.push(v.clone());
                 // format!("{} = ${}", k, i + 1)
@@ -97,11 +103,34 @@ pub trait Dao<T> where T: Sized {
                                 format!("{} = {}", k, placeholder)
             })
             .collect();
-        
-        if let Some(id_value) = map.get(&Self::primary_key_column()) {
+*/
+        let mut primary_value = None; 
+            let update_columns: Vec<String> = map1.iter()
+            .map(|kv| {
+                if kv.0 == Self::primary_key_column() {
+                    primary_value = Some(kv.1.clone());
+                }
+                kv 
+            })
+            .filter(|(kv)| kv.0 != Self::primary_key_column())
+            .enumerate()
+            .map(|(i, kv)| {
+
+                let placeholder = self.placeholders(&vec![kv.0.clone();i+1])[i].clone();  
+
+                values.push(kv.1.clone());
+                                format!("{} = {}", kv.0, placeholder)
+            })
+            .collect();
+        // if let Some(id_value) = map.get(&Self::primary_key_column()) {
+            // values.push(id_value.clone());
+        // }
+
+        if let Some(id_value) = primary_value  {
             values.push(id_value.clone());
         }
-        let mut placeholders = self.placeholders(&values);
+        // let keys = Self::entity_to_keys(entity);
+        // let mut placeholders = self.placeholders(&keys);
         
         let query = format!(
             // "UPDATE {} SET {} WHERE {} = ?",
@@ -109,14 +138,15 @@ pub trait Dao<T> where T: Sized {
             Self::table_name(),
             update_columns.join(", "),
             Self::primary_key_column(),
-            // values.len()
-            if let Some(primary_key_placeholder) = placeholders.pop() {
-                primary_key_placeholder
-            } else {
-                panic!("primary_key {}", &Self::primary_key_column());
-            }
+            self.placeholders(&vec![Self::primary_key_column();values.len()])[values.len() -1].clone(),
+            // if let Some(primary_key_placeholder) = placeholders.pop() {
+                // primary_key_placeholder
+            // } else {
+                // panic!("primary_key {}", &Self::primary_key_column());
+            // }
 
         );
+        dbg!(&query, &values);
         
         self.database().execute(&query, values)
     }

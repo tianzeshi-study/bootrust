@@ -78,9 +78,9 @@ impl SqliteDatabase {
 
 impl RelationalDatabase for SqliteDatabase {
 
-    fn placeholders(&self, vals: &Vec<Value>) -> Vec<String> {
-        let placeholders: Vec<String> = (1..=vals.len())
-        .map(|i| format!("${}", i))
+    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
+        let placeholders: Vec<String> = (1..=keys.len())
+        .map(|i| format!("?{}", i))
                     .collect();
                     placeholders
     }
