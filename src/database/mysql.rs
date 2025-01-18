@@ -1,12 +1,11 @@
+use crate::database::{
+    Connection as DbConnection, Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
+};
+use chrono::{DateTime, Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
 use mysql::{Opts, OptsBuilder};
-use chrono::{NaiveDateTime, TimeZone, Utc, DateTime, Datelike, Timelike};
+use r2d2::{Pool, PooledConnection};
 use r2d2_mysql::mysql::{prelude::*, Value as MySqlValue};
 use r2d2_mysql::MysqlConnectionManager;
-use r2d2::{Pool, PooledConnection};
-use crate::database::{
-    RelationalDatabase, Value, DbError, Row, DatabaseConfig, 
-    Connection as DbConnection, Connection
-};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -23,11 +22,9 @@ impl MySqlDatabase {
             .user(Some(&config.username))
             .pass(Some(&config.password))
             .db_name(Some(&config.database_name));
-            
+
         let manager = MysqlConnectionManager::new(opts);
-        Pool::builder()
-            .max_size(10)
-            .build(manager)
+        Pool::builder().max_size(10).build(manager)
     }
 
     fn value_to_mysql(value: &Value) -> MySqlValue {
@@ -55,52 +52,59 @@ impl MySqlDatabase {
             MySqlValue::Int(i) => Ok(Value::Integer(i)),
             MySqlValue::Float(f) => Ok(Value::Float(f as f64)),
             MySqlValue::Bytes(bytes) => Ok(Value::Text(
-                String::from_utf8(bytes)
-                    .map_err(|e| DbError::ConversionError(e.to_string()))?
+                String::from_utf8(bytes).map_err(|e| DbError::ConversionError(e.to_string()))?,
             )),
             MySqlValue::Date(year, month, day, hour, minute, second, micros) => {
-
                 let naive = NaiveDateTime::new(
                     chrono::NaiveDate::from_ymd_opt(year as i32, month as u32, day as u32)
                         .ok_or_else(|| DbError::ConversionError("Invalid date".to_string()))?,
                     chrono::NaiveTime::from_hms_micro_opt(
-                        hour as u32, minute as u32, second as u32, micros
-                    ).ok_or_else(|| DbError::ConversionError("Invalid time".to_string()))?
+                        hour as u32,
+                        minute as u32,
+                        second as u32,
+                        micros,
+                    )
+                    .ok_or_else(|| DbError::ConversionError("Invalid time".to_string()))?,
                 );
                 Ok(Value::DateTime(Utc.from_utc_datetime(&naive)))
             }
-            _ => Err(DbError::ConversionError("Unsupported MySQL type".to_string())),
+            _ => Err(DbError::ConversionError(
+                "Unsupported MySQL type".to_string(),
+            )),
         }
     }
 
     fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
-where
-    // F: FnOnce(&mut PooledConnection<MysqlConnectionManager>) -> Result<T, DbError>
-    F: FnOnce(&mut PooledConnection<MysqlConnectionManager>) -> Result<T, DbError>
-{
-    let mut transaction_guard = self.current_transaction.lock()
+    where
+        // F: FnOnce(&mut PooledConnection<MysqlConnectionManager>) -> Result<T, DbError>
+        F: FnOnce(&mut PooledConnection<MysqlConnectionManager>) -> Result<T, DbError>,
+    {
+        let mut transaction_guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-         
-    let mut conn = if let Some(conn) = &mut *transaction_guard {
-        conn
-    } else {
-        &mut self.pool.get()
-            .map_err(|e| DbError::ConnectionError(e.to_string()))?
-    };
 
-    // f(conn)
-    f(&mut conn)
-}
+        let mut conn = if let Some(conn) = &mut *transaction_guard {
+            conn
+        } else {
+            &mut self
+                .pool
+                .get()
+                .map_err(|e| DbError::ConnectionError(e.to_string()))?
+        };
+
+        // f(conn)
+        f(&mut conn)
+    }
 }
 
 impl RelationalDatabase for MySqlDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
-        vec!["?".to_string();keys.len()]
+        vec!["?".to_string(); keys.len()]
     }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
-        let pool = Self::new_pool(&config)
-            .map_err(|e| DbError::ConnectionError(e.to_string()))?;
-            
+        let pool = Self::new_pool(&config).map_err(|e| DbError::ConnectionError(e.to_string()))?;
+
         Ok(MySqlDatabase {
             pool: Arc::new(pool),
             current_transaction: Arc::new(Mutex::new(None)),
@@ -112,7 +116,9 @@ impl RelationalDatabase for MySqlDatabase {
     }
 
     fn ping(&self) -> Result<(), DbError> {
-        let mut conn = self.pool.get()
+        let mut conn = self
+            .pool
+            .get()
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
         conn.query_drop("SELECT 1")
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
@@ -120,23 +126,29 @@ impl RelationalDatabase for MySqlDatabase {
     }
 
     fn begin_transaction(&self) -> Result<(), DbError> {
-        let mut conn = self.pool.get()
+        let mut conn = self
+            .pool
+            .get()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         conn.query_drop("START TRANSACTION")
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
-        let mut guard = self.current_transaction.lock()
+
+        let mut guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
         *guard = Some(conn);
-        
+
         Ok(())
     }
 
     fn commit(&self) -> Result<(), DbError> {
-        let mut guard = self.current_transaction.lock()
+        let mut guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         if let Some(mut conn) = guard.take() {
             conn.query_drop("COMMIT")
                 .map_err(|e| DbError::TransactionError(e.to_string()))?;
@@ -145,9 +157,11 @@ impl RelationalDatabase for MySqlDatabase {
     }
 
     fn rollback(&self) -> Result<(), DbError> {
-        let mut guard = self.current_transaction.lock()
+        let mut guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         if let Some(mut conn) = guard.take() {
             conn.query_drop("ROLLBACK")
                 .map_err(|e| DbError::TransactionError(e.to_string()))?;
@@ -157,39 +171,39 @@ impl RelationalDatabase for MySqlDatabase {
 
     fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
         self.execute_with_connection(|conn| {
-            let params: Vec<mysql::Value> = params.iter()
-                .map(MySqlDatabase::value_to_mysql)
-                .collect();
+            let params: Vec<mysql::Value> =
+                params.iter().map(MySqlDatabase::value_to_mysql).collect();
 
             conn.exec_drop(query, params)
                 .map_err(|e| DbError::QueryError(e.to_string()))?;
-                
+
             Ok(conn.affected_rows() as u64)
         })
     }
 
     fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
         self.execute_with_connection(|conn| {
-            let params: Vec<mysql::Value> = params.iter()
-                .map(MySqlDatabase::value_to_mysql)
-                .collect();
+            let params: Vec<mysql::Value> =
+                params.iter().map(MySqlDatabase::value_to_mysql).collect();
 
-            let result = conn.exec_map(query, params, |row: mysql::Row| {
-                let mut values = Vec::new();
-                let columns = row.columns();
-                
-                for (i, column) in columns.iter().enumerate() {
-                    let value = row.get(i)
-                        .ok_or_else(|| DbError::QueryError("Missing column value".to_string()))?;
-                    values.push(Self::convert_mysql_to_value(value)?);
-                }
-                
-                Ok(Row {
-                    columns: columns.iter().map(|c| c.name_str().to_string()).collect(),
-                    values,
+            let result = conn
+                .exec_map(query, params, |row: mysql::Row| {
+                    let mut values = Vec::new();
+                    let columns = row.columns();
+
+                    for (i, column) in columns.iter().enumerate() {
+                        let value = row.get(i).ok_or_else(|| {
+                            DbError::QueryError("Missing column value".to_string())
+                        })?;
+                        values.push(Self::convert_mysql_to_value(value)?);
+                    }
+
+                    Ok(Row {
+                        columns: columns.iter().map(|c| c.name_str().to_string()).collect(),
+                        values,
+                    })
                 })
-            })
-            .map_err(|e| DbError::QueryError(e.to_string()))?;
+                .map_err(|e| DbError::QueryError(e.to_string()))?;
 
             let mut rows = Vec::new();
             for row_result in result {
@@ -205,7 +219,9 @@ impl RelationalDatabase for MySqlDatabase {
     }
 
     fn get_connection(&self) -> Result<Connection, DbError> {
-        let _conn = self.pool.get()
+        let _conn = self
+            .pool
+            .get()
             .map_err(|e| DbError::PoolError(e.to_string()))?;
         Ok(Connection {})
     }
@@ -219,8 +235,7 @@ impl RelationalDatabase for MySqlDatabase {
 mod tests {
     use super::*;
     use chrono::Utc;
-use serial_test::serial;
-
+    use serial_test::serial;
 
     fn setup_test_db() -> MySqlDatabase {
         let config = DatabaseConfig {
@@ -254,18 +269,18 @@ use serial_test::serial;
         .unwrap();
 
         let affected_rows = db
-            .execute("INSERT INTO users (name, age) VALUES (?, ?)", vec![
-                Value::Text("Alice".to_string()),
-                Value::Integer(30),
-            ])
+            .execute(
+                "INSERT INTO users (name, age) VALUES (?, ?)",
+                vec![Value::Text("Alice".to_string()), Value::Integer(30)],
+            )
             .unwrap();
         assert_eq!(affected_rows, 1);
 
         let affected_rows = db
-            .execute("UPDATE users SET age = ? WHERE name = ?", vec![
-                Value::Integer(31),
-                Value::Text("Alice".to_string()),
-            ])
+            .execute(
+                "UPDATE users SET age = ? WHERE name = ?",
+                vec![Value::Integer(31), Value::Text("Alice".to_string())],
+            )
             .unwrap();
         assert_eq!(affected_rows, 1);
 
@@ -333,16 +348,20 @@ use serial_test::serial;
         )
         .unwrap();
 
-        db.execute("INSERT INTO users (name) VALUES (?), (?)", vec![
-            Value::Text("Alice".to_string()),
-            Value::Text("Bob".to_string()),
-        ])
+        db.execute(
+            "INSERT INTO users (name) VALUES (?), (?)",
+            vec![
+                Value::Text("Alice".to_string()),
+                Value::Text("Bob".to_string()),
+            ],
+        )
         .unwrap();
 
         let row = db
-            .query_one("SELECT id, name FROM users WHERE name = ?", vec![
-                Value::Text("Alice".to_string()),
-            ])
+            .query_one(
+                "SELECT id, name FROM users WHERE name = ?",
+                vec![Value::Text("Alice".to_string())],
+            )
             .unwrap();
         assert!(row.is_some());
 
@@ -356,9 +375,10 @@ use serial_test::serial;
         }
 
         let none = db
-            .query_one("SELECT * FROM users WHERE name = ?", vec![
-                Value::Text("Charlie".to_string()),
-            ])
+            .query_one(
+                "SELECT * FROM users WHERE name = ?",
+                vec![Value::Text("Charlie".to_string())],
+            )
             .unwrap();
         assert!(none.is_none());
 
@@ -378,9 +398,10 @@ use serial_test::serial;
         .unwrap();
 
         db.begin_transaction().unwrap();
-        db.execute("INSERT INTO users (name) VALUES (?)", vec![
-            Value::Text("Alice".to_string()),
-        ])
+        db.execute(
+            "INSERT INTO users (name) VALUES (?)",
+            vec![Value::Text("Alice".to_string())],
+        )
         .unwrap();
         db.rollback().unwrap();
 
@@ -388,9 +409,10 @@ use serial_test::serial;
         assert_eq!(rows.len(), 0);
 
         db.begin_transaction().unwrap();
-        db.execute("INSERT INTO users (name) VALUES (?)", vec![
-            Value::Text("Bob".to_string()),
-        ])
+        db.execute(
+            "INSERT INTO users (name) VALUES (?)",
+            vec![Value::Text("Bob".to_string())],
+        )
         .unwrap();
         db.commit().unwrap();
 
@@ -419,5 +441,4 @@ use serial_test::serial;
             panic!("Expected DateTime");
         }
     }
-
-} 
+}

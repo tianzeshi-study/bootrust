@@ -1,17 +1,17 @@
+pub mod controller;
+pub mod dao;
+pub mod database;
 pub mod entity;
 pub mod repository;
 pub mod service;
-pub mod controller;
-pub mod database;
-pub mod dao;
 
 use std::sync::{Arc, Mutex};
 
 // 重新导出主要的类型
+pub use controller::UserController;
 pub use entity::UserEntity;
 pub use repository::UserRepository;
 pub use service::UserService;
-pub use controller::UserController;
 
 // 定义错误类型
 #[derive(Debug)]
@@ -62,7 +62,7 @@ mod tests {
         // 测试删除用户
         assert!(controller.delete_user(user.id).is_ok());
         assert!(controller.get_user(user.id).is_err());
-    
-      assert!(controller.get_user(user.id).is_err());
+
+        assert!(controller.get_user(user.id).is_err());
     }
 }

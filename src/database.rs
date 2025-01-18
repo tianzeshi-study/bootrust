@@ -1,5 +1,5 @@
-pub mod sqlite;
 pub mod mysql;
+pub mod sqlite;
 // 定义数据库连接配置
 #[derive(Default)]
 pub struct DatabaseConfig {
@@ -22,20 +22,22 @@ pub enum DatabaseType {
 pub trait RelationalDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
     // 连接相关
-    fn connect(config: DatabaseConfig) -> Result<Self, DbError> where Self: Sized;
+    fn connect(config: DatabaseConfig) -> Result<Self, DbError>
+    where
+        Self: Sized;
     fn close(&self) -> Result<(), DbError>;
     fn ping(&self) -> Result<(), DbError>;
-    
+
     // 事务相关
     fn begin_transaction(&self) -> Result<(), DbError>;
     fn commit(&self) -> Result<(), DbError>;
     fn rollback(&self) -> Result<(), DbError>;
-    
+
     // 查询相关
     fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError>;
     fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError>;
     fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError>;
-    
+
     // 连接池相关
     fn get_connection(&self) -> Result<Connection, DbError>;
     fn release_connection(&self, conn: Connection) -> Result<(), DbError>;

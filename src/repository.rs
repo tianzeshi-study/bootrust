@@ -3,9 +3,7 @@
 use super::*;
 use std::collections::HashMap;
 
-
 pub struct UserRepository {
-    
     users: Arc<Mutex<HashMap<u32, UserEntity>>>,
     next_id: Arc<Mutex<u32>>,
 }
@@ -63,7 +61,7 @@ impl UserRepository {
     }
 }
 
-pub trait Repository{
+pub trait Repository {
     // 关联类型，用于指定具体的实体类型
     type DomainObject;
     type Error;
@@ -72,13 +70,17 @@ pub trait Repository{
     fn create(&self, DomainObject: Self::DomainObject) -> Result<Self::DomainObject, Self::Error>;
     fn find_by_id(&self, id: u32) -> Result<Self::DomainObject, Self::Error>;
     fn find_all(&self) -> Result<Vec<Self::DomainObject>, Self::Error>;
-    fn update(&self, id: u32, DomainObject: Self::DomainObject) -> Result<Self::DomainObject, Self::Error>;
+    fn update(
+        &self,
+        id: u32,
+        DomainObject: Self::DomainObject,
+    ) -> Result<Self::DomainObject, Self::Error>;
     fn delete(&self, id: u32) -> Result<(), Self::Error>;
 }
 
 // 然后为 UserRepository 实现这个 trait
 impl Repository for UserRepository {
-    type DomainObject= UserEntity;
+    type DomainObject = UserEntity;
     type Error = UserError;
 
     fn create(&self, DomainObject: Self::DomainObject) -> Result<Self::DomainObject, Self::Error> {
@@ -93,7 +95,11 @@ impl Repository for UserRepository {
         self.find_all()
     }
 
-    fn update(&self, id: u32, DomainObject: Self::DomainObject) -> Result<Self::DomainObject, Self::Error> {
+    fn update(
+        &self,
+        id: u32,
+        DomainObject: Self::DomainObject,
+    ) -> Result<Self::DomainObject, Self::Error> {
         self.update(id, DomainObject)
     }
 

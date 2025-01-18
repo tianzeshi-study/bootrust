@@ -1,13 +1,14 @@
-use rusqlite::{Connection as SqliteConn, params_from_iter, Result as SqliteResult, ToSql, types::Type};
-use r2d2_sqlite::SqliteConnectionManager;
-use r2d2::{Pool, PooledConnection};
 use crate::database::{
-    RelationalDatabase, Value, DbError, Row, DatabaseConfig, 
-    Connection as DbConnection, Connection
+    Connection as DbConnection, Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
+};
+use r2d2::{Pool, PooledConnection};
+use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::{
+    params_from_iter, types::Type, Connection as SqliteConn, Result as SqliteResult, ToSql,
 };
 use std::sync::{Arc, Mutex};
 
-#[derive(Debug, Clone )]
+#[derive(Debug, Clone)]
 pub struct SqliteDatabase {
     pool: Arc<Pool<SqliteConnectionManager>>,
     current_transaction: Arc<Mutex<Option<PooledConnection<SqliteConnectionManager>>>>,
@@ -16,9 +17,7 @@ pub struct SqliteDatabase {
 impl SqliteDatabase {
     fn new_pool(path: &str, max_size: u32) -> Result<Pool<SqliteConnectionManager>, r2d2::Error> {
         let manager = SqliteConnectionManager::file(path);
-        Pool::builder()
-            .max_size(max_size)
-            .build(manager)
+        Pool::builder().max_size(max_size).build(manager)
     }
 
     fn value_to_sql(value: &Value) -> Box<dyn ToSql> {
@@ -37,38 +36,49 @@ impl SqliteDatabase {
             rusqlite::types::ValueRef::Null => Ok(Value::Null),
             rusqlite::types::ValueRef::Integer(i) => Ok(Value::Integer(i)),
             rusqlite::types::ValueRef::Real(f) => Ok(Value::Float(f)),
-            rusqlite::types::ValueRef::Text(s) => Ok(Value::Text(String::from_utf8_lossy(s).into_owned())),
+            rusqlite::types::ValueRef::Text(s) => {
+                Ok(Value::Text(String::from_utf8_lossy(s).into_owned()))
+            }
             _ => Err(rusqlite::Error::InvalidColumnType(
-                0, 
-                String::from("Unsupported type"), 
-                Type::Null
+                0,
+                String::from("Unsupported type"),
+                Type::Null,
             )),
         }
     }
 
     fn get_current_connection(&self) -> Result<PooledConnection<SqliteConnectionManager>, DbError> {
-        let transaction_guard = self.current_transaction.lock()
+        let transaction_guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         if let Some(_) = *transaction_guard {
-            Err(DbError::TransactionError("Cannot get connection during transaction".to_string()))
+            Err(DbError::TransactionError(
+                "Cannot get connection during transaction".to_string(),
+            ))
         } else {
-            self.pool.get()
+            self.pool
+                .get()
                 .map_err(|e| DbError::ConnectionError(e.to_string()))
         }
     }
 
     fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where
-        F: FnOnce(&PooledConnection<SqliteConnectionManager>) -> Result<T, DbError>
+        F: FnOnce(&PooledConnection<SqliteConnectionManager>) -> Result<T, DbError>,
     {
-        let transaction_guard = self.current_transaction.lock()
+        let transaction_guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         let conn = if let Some(ref conn) = *transaction_guard {
             conn
         } else {
-            &self.pool.get()
+            &self
+                .pool
+                .get()
                 .map_err(|e| DbError::ConnectionError(e.to_string()))?
         };
 
@@ -77,17 +87,14 @@ impl SqliteDatabase {
 }
 
 impl RelationalDatabase for SqliteDatabase {
-
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
-        let placeholders: Vec<String> = (1..=keys.len())
-        .map(|i| format!("?{}", i))
-                    .collect();
-                    placeholders
+        let placeholders: Vec<String> = (1..=keys.len()).map(|i| format!("?{}", i)).collect();
+        placeholders
     }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
         let pool = Self::new_pool(&config.database_name, 10)
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
-            
+
         Ok(SqliteDatabase {
             pool: Arc::new(pool),
             current_transaction: Arc::new(Mutex::new(None)),
@@ -99,31 +106,39 @@ impl RelationalDatabase for SqliteDatabase {
     }
 
     fn ping(&self) -> Result<(), DbError> {
-        let conn = self.pool.get()
+        let conn = self
+            .pool
+            .get()
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
-                    conn.prepare("SELECT 1") 
+        conn.prepare("SELECT 1")
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
         Ok(())
     }
 
     fn begin_transaction(&self) -> Result<(), DbError> {
-        let conn = self.pool.get()
+        let conn = self
+            .pool
+            .get()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         conn.execute("BEGIN TRANSACTION", [])
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
-        let mut guard = self.current_transaction.lock()
+
+        let mut guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
         *guard = Some(conn);
-        
+
         Ok(())
     }
 
     fn commit(&self) -> Result<(), DbError> {
-        let mut guard = self.current_transaction.lock()
+        let mut guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         if let Some(conn) = guard.take() {
             conn.execute("COMMIT", [])
                 .map_err(|e| DbError::TransactionError(e.to_string()))?;
@@ -132,9 +147,11 @@ impl RelationalDatabase for SqliteDatabase {
     }
 
     fn rollback(&self) -> Result<(), DbError> {
-        let mut guard = self.current_transaction.lock()
+        let mut guard = self
+            .current_transaction
+            .lock()
             .map_err(|e| DbError::TransactionError(e.to_string()))?;
-            
+
         if let Some(conn) = guard.take() {
             conn.execute("ROLLBACK", [])
                 .map_err(|e| DbError::TransactionError(e.to_string()))?;
@@ -144,9 +161,8 @@ impl RelationalDatabase for SqliteDatabase {
 
     fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
         self.execute_with_connection(|conn| {
-            let params: Vec<Box<dyn ToSql>> = params.iter()
-                .map(SqliteDatabase::value_to_sql)
-                .collect();
+            let params: Vec<Box<dyn ToSql>> =
+                params.iter().map(SqliteDatabase::value_to_sql).collect();
 
             conn.execute(query, rusqlite::params_from_iter(params.iter()))
                 .map(|rows| rows as u64)
@@ -156,39 +172,47 @@ impl RelationalDatabase for SqliteDatabase {
 
     fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
         self.execute_with_connection(|conn| {
-            let mut stmt = conn.prepare(query)
+            let mut stmt = conn
+                .prepare(query)
                 .map_err(|e| DbError::QueryError(e.to_string()))?;
-            
-            let column_names: Vec<String> = stmt.column_names()
+
+            let column_names: Vec<String> = stmt
+                .column_names()
                 .iter()
                 .map(|&name| name.to_string())
                 .collect();
 
             let column_count = stmt.column_count();
 
-            let params: Vec<Box<dyn ToSql>> = params.iter()
-                .map(SqliteDatabase::value_to_sql)
-                .collect();
+            let params: Vec<Box<dyn ToSql>> =
+                params.iter().map(SqliteDatabase::value_to_sql).collect();
 
-            let rows = stmt.query_map(rusqlite::params_from_iter(params.iter()), |row| {
-                let mut values = Vec::new();
-                for i in 0..column_count {
-                    let value = Self::convert_sql_to_value(row.get_ref(i)
-                        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
-                            i,
-                            rusqlite::types::Type::Text,
-                            Box::new(e)
-                        ))?)
-                        .map_err(|e| rusqlite::Error::FromSqlConversionFailure(
-                            i,
-                            rusqlite::types::Type::Text,
-                            Box::new(e)
-                        ))?;
-                    values.push(value);
-                }
-                Ok(Row { columns: column_names.clone(), values })
-            })
-            .map_err(|e| DbError::QueryError(e.to_string()))?;
+            let rows = stmt
+                .query_map(rusqlite::params_from_iter(params.iter()), |row| {
+                    let mut values = Vec::new();
+                    for i in 0..column_count {
+                        let value = Self::convert_sql_to_value(row.get_ref(i).map_err(|e| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                i,
+                                rusqlite::types::Type::Text,
+                                Box::new(e),
+                            )
+                        })?)
+                        .map_err(|e| {
+                            rusqlite::Error::FromSqlConversionFailure(
+                                i,
+                                rusqlite::types::Type::Text,
+                                Box::new(e),
+                            )
+                        })?;
+                        values.push(value);
+                    }
+                    Ok(Row {
+                        columns: column_names.clone(),
+                        values,
+                    })
+                })
+                .map_err(|e| DbError::QueryError(e.to_string()))?;
 
             let mut results = Vec::new();
             for row in rows {
@@ -204,7 +228,9 @@ impl RelationalDatabase for SqliteDatabase {
     }
 
     fn get_connection(&self) -> Result<Connection, DbError> {
-        let _conn = self.pool.get()
+        let _conn = self
+            .pool
+            .get()
             .map_err(|e| DbError::PoolError(e.to_string()))?;
         Ok(Connection {})
     }
@@ -217,8 +243,8 @@ impl RelationalDatabase for SqliteDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
     use chrono::Utc;
+    use std::fs;
 
     fn setup_test_db() -> SqliteDatabase {
         // 使用内存数据库进行测试
@@ -239,7 +265,7 @@ mod tests {
     #[test]
     fn test_execute_query() {
         let db = setup_test_db();
-        
+
         // 创建测试表
         let create_table = "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
         assert!(db.execute(create_table, vec![]).is_ok());
@@ -248,7 +274,7 @@ mod tests {
         let insert = "INSERT INTO test (name, age) VALUES ($1, $2)";
         let result = db.execute(
             insert,
-            vec![Value::Text("Alice".to_string()), Value::Integer(25)]
+            vec![Value::Text("Alice".to_string()), Value::Integer(25)],
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 1);
@@ -257,31 +283,33 @@ mod tests {
     #[test]
     fn test_query() {
         let db = setup_test_db();
-        
+
         // 创建并填充测试表
         db.execute(
             "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)",
-            vec![]
-        ).unwrap();
-        
+            vec![],
+        )
+        .unwrap();
+
         db.execute(
             "INSERT INTO test (name, age) VALUES ($1, $2)",
-            vec![Value::Text("Bob".to_string()), Value::Integer(30)]
-        ).unwrap();
+            vec![Value::Text("Bob".to_string()), Value::Integer(30)],
+        )
+        .unwrap();
 
         // 测试查询
         let rows = db.query("SELECT * FROM test", vec![]).unwrap();
         assert_eq!(rows.len(), 1);
-        
+
         let row = &rows[0];
         assert_eq!(row.columns.len(), 3);
         assert_eq!(row.values.len(), 3);
-        
+
         match &row.values[1] {
             Value::Text(name) => assert_eq!(name, "Bob"),
             _ => panic!("Expected Text value"),
         }
-        
+
         match &row.values[2] {
             Value::Integer(age) => assert_eq!(*age, 30),
             _ => panic!("Expected Integer value"),
@@ -291,20 +319,22 @@ mod tests {
     #[test]
     fn test_transaction() {
         let db = setup_test_db();
-        
+
         // 设置测试表
         db.execute(
             "CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)",
-            vec![]
-        ).unwrap();
+            vec![],
+        )
+        .unwrap();
         dbg!(&db.query("SELECT * FROM test", vec![]).unwrap());
 
         // 测试成功的事务
         db.begin_transaction().unwrap();
         db.execute(
             "INSERT INTO test (value) VALUES ($1)",
-            vec![Value::Text("transaction_test".to_string())]
-        ).unwrap();
+            vec![Value::Text("transaction_test".to_string())],
+        )
+        .unwrap();
         db.commit().unwrap();
 
         let rows = db.query("SELECT * FROM test", vec![]).unwrap();
@@ -314,8 +344,9 @@ mod tests {
         db.begin_transaction().unwrap();
         db.execute(
             "INSERT INTO test (value) VALUES ($1)",
-            vec![Value::Text("will_rollback".to_string())]
-        ).unwrap();
+            vec![Value::Text("will_rollback".to_string())],
+        )
+        .unwrap();
         db.rollback().unwrap();
 
         let rows = db.query("SELECT * FROM test", vec![]).unwrap();
@@ -325,7 +356,7 @@ mod tests {
     #[test]
     fn test_value_conversions() {
         let db = setup_test_db();
-        
+
         db.execute(
             "CREATE TABLE test_types (
                 id INTEGER PRIMARY KEY,
@@ -335,11 +366,12 @@ mod tests {
                 null_val TEXT,
                 datetime_val TEXT
             )",
-            vec![]
-        ).unwrap();
+            vec![],
+        )
+        .unwrap();
 
         let now = Utc::now();
-        
+
         db.execute(
             "INSERT INTO test_types (int_val, float_val, text_val, null_val, datetime_val) 
              VALUES ($1, $2, $3, $4, $5)",
@@ -349,34 +381,32 @@ mod tests {
                 Value::Text("hello".to_string()),
                 Value::Null,
                 Value::DateTime(now),
-            ]
-        ).unwrap();
+            ],
+        )
+        .unwrap();
 
         let rows = db.query("SELECT * FROM test_types", vec![]).unwrap();
         assert_eq!(rows.len(), 1);
-        
+
         let row = &rows[0];
         match &row.values[1] {
             Value::Integer(i) => assert_eq!(*i, 42),
             _ => panic!("Expected Integer"),
         }
-        
+
         match &row.values[2] {
             Value::Float(f) => assert!((f - 3.14).abs() < f64::EPSILON),
             _ => panic!("Expected Float"),
         }
-        
+
         match &row.values[3] {
             Value::Text(s) => assert_eq!(s, "hello"),
             _ => panic!("Expected Text"),
         }
-        
+
         match &row.values[4] {
             Value::Null => (),
             _ => panic!("Expected Null"),
         }
     }
 }
-
-
-
