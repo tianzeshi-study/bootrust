@@ -32,8 +32,10 @@ impl MySqlDatabase {
             Value::Null => MySqlValue::NULL,
             Value::Integer(i) => MySqlValue::Int(*i),
             Value::Float(f) => MySqlValue::Float(*f as f32),
+            Value::Double(f) => MySqlValue::Double(*f),
             Value::Text(s) => MySqlValue::Bytes(s.clone().into_bytes()),
             Value::Boolean(b) => MySqlValue::Int(if *b { 1 } else { 0 }),
+            Value::Bytes(b) => MySqlValue::from(b),
             Value::DateTime(dt) => MySqlValue::Date(
                 dt.year() as u16,
                 dt.month() as u8,
@@ -50,7 +52,8 @@ impl MySqlDatabase {
         match value {
             MySqlValue::NULL => Ok(Value::Null),
             MySqlValue::Int(i) => Ok(Value::Integer(i)),
-            MySqlValue::Float(f) => Ok(Value::Float(f as f64)),
+            MySqlValue::Float(f) => Ok(Value::Float(f)),
+            MySqlValue::Double(f) => Ok(Value::Double(f)),
             MySqlValue::Bytes(bytes) => Ok(Value::Text(
                 String::from_utf8(bytes).map_err(|e| DbError::ConversionError(e.to_string()))?,
             )),

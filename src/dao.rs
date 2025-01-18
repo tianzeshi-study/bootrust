@@ -138,7 +138,7 @@ where
                 .clone(),
         );
 
-dbg!(&query);
+        dbg!(&query);
         self.database().execute(&query, values)
     }
 
@@ -163,5 +163,17 @@ dbg!(&query);
             entities.push(Self::row_to_entity(row)?);
         }
         Ok(entities)
+    }
+
+    fn begin_transaction(&self) -> Result<(), DbError> {
+        self.database().begin_transaction()
+    }
+
+    fn commit(&self) -> Result<(), DbError>{
+        self.database().commit()
+    }
+
+    fn rollback(&self) -> Result<(), DbError>{
+        self.database().rollback()
     }
 }

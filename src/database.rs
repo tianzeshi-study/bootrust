@@ -59,9 +59,11 @@ pub enum DbError {
 pub enum Value {
     Null,
     Integer(i64),
-    Float(f64),
+    Float(f32),
+    Double(f64),
     Text(String),
     Boolean(bool),
+    Bytes(Vec<u8>),
     DateTime(chrono::DateTime<chrono::Utc>),
     // 其他数据类型...
 }

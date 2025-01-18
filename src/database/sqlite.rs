@@ -25,8 +25,10 @@ impl SqliteDatabase {
             Value::Null => Box::new(None::<String>),
             Value::Integer(i) => Box::new(*i),
             Value::Float(f) => Box::new(*f),
+            Value::Double(f) => Box::new(*f),
             Value::Text(s) => Box::new(s.clone()),
             Value::Boolean(b) => Box::new(*b),
+            Value::Bytes(b) => Box::new(b.to_vec()),
             Value::DateTime(dt) => Box::new(dt.to_rfc3339()),
         }
     }
@@ -35,7 +37,7 @@ impl SqliteDatabase {
         match value {
             rusqlite::types::ValueRef::Null => Ok(Value::Null),
             rusqlite::types::ValueRef::Integer(i) => Ok(Value::Integer(i)),
-            rusqlite::types::ValueRef::Real(f) => Ok(Value::Float(f)),
+            rusqlite::types::ValueRef::Real(f) => Ok(Value::Double(f)),
             rusqlite::types::ValueRef::Text(s) => {
                 Ok(Value::Text(String::from_utf8_lossy(s).into_owned()))
             }
@@ -88,7 +90,7 @@ impl SqliteDatabase {
 
 impl RelationalDatabase for SqliteDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
-        let placeholders: Vec<String> = (1..=keys.len()).map(|i| format!("?{}", i)).collect();
+        let placeholders: Vec<String> = (1..=keys.len()).map(|i| format!("${}", i)).collect();
         placeholders
     }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
@@ -377,7 +379,7 @@ mod tests {
              VALUES ($1, $2, $3, $4, $5)",
             vec![
                 Value::Integer(42),
-                Value::Float(3.14),
+                Value::Double(3.14),
                 Value::Text("hello".to_string()),
                 Value::Null,
                 Value::DateTime(now),
@@ -395,7 +397,7 @@ mod tests {
         }
 
         match &row.values[2] {
-            Value::Float(f) => assert!((f - 3.14).abs() < f64::EPSILON),
+            Value::Double(f) => assert!((f - 3.14).abs() < f64::EPSILON),
             _ => panic!("Expected Float"),
         }
 
