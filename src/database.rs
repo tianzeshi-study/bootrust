@@ -1,13 +1,27 @@
 pub mod mysql;
 pub mod sqlite;
 // 定义数据库连接配置
-#[derive(Default)]
+#[derive(Clone)]
 pub struct DatabaseConfig {
     pub host: String,
     pub port: u16,
     pub username: String,
     pub password: String,
     pub database_name: String,
+    pub max_size: u32,
+}
+
+impl Default for DatabaseConfig {
+    fn default() -> Self {
+        Self {
+        host: "localhost".to_string(),
+        port: 3306,
+        username: "root".to_string(),
+        password: "root".to_string(),
+        database_name: "DefaultDatabase".to_string(),
+        max_size: 16,
+    }
+    }
 }
 
 // 定义数据库连接池类型

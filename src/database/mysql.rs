@@ -24,7 +24,7 @@ impl MySqlDatabase {
             .db_name(Some(&config.database_name));
 
         let manager = MysqlConnectionManager::new(opts);
-        Pool::builder().max_size(10).build(manager)
+        Pool::builder().max_size(config.max_size).build(manager)
     }
 
     fn value_to_mysql(value: &Value) -> MySqlValue {
@@ -247,6 +247,7 @@ mod tests {
             username: "root".to_string(),
             password: "root".to_string(),
             database_name: "test".to_string(),
+            max_size: 10,
         };
         MySqlDatabase::connect(config).unwrap()
     }

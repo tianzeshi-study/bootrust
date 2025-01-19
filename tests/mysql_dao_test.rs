@@ -110,6 +110,7 @@ fn setup_test_db() -> MySqlDatabase {
         username: "root".to_string(),
         password: "root".to_string(),
         database_name: "test".to_string(),
+        max_size: 15,
     };
     let db = MySqlDatabase::connect(config).unwrap();
 

@@ -94,7 +94,7 @@ impl RelationalDatabase for SqliteDatabase {
         placeholders
     }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
-        let pool = Self::new_pool(&config.database_name, 10)
+        let pool = Self::new_pool(&config.database_name, config.max_size)
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
 
         Ok(SqliteDatabase {

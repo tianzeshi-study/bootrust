@@ -38,17 +38,17 @@ struct Payment {
     paid_at: DateTime<Utc>,
 }
 
-// ProductDao实现
-struct ProductDao<T: Sized> {
+// ECommerceDo实现
+struct ECommerceDo<T: Sized> {
     database: MySqlDatabase,
     _table: PhantomData<T>,
 }
 
-impl Dao<Product> for ProductDao<Product> {
+impl Dao<Product> for ECommerceDo<Product> {
     type Database = MySqlDatabase;
 
     fn new(database: Self::Database) -> Self {
-        ProductDao {
+        ECommerceDo {
             database,
             _table: PhantomData,
         }
@@ -128,17 +128,12 @@ impl Dao<Product> for ProductDao<Product> {
     }
 }
 
-// CartItemDao实现
-struct CartItemDao<T: Sized> {
-    database: MySqlDatabase,
-    _table: PhantomData<T>,
-}
 
-impl Dao<CartItem> for CartItemDao<CartItem> {
+impl Dao<CartItem> for ECommerceDo<CartItem> {
     type Database = MySqlDatabase;
 
     fn new(database: Self::Database) -> Self {
-        CartItemDao {
+        ECommerceDo {
             database,
             _table: PhantomData,
         }
@@ -198,17 +193,11 @@ impl Dao<CartItem> for CartItemDao<CartItem> {
     }
 }
 
-// PaymentDao实现
-struct PaymentDao<T: Sized> {
-    database: MySqlDatabase,
-    _table: PhantomData<T>,
-}
-
-impl Dao<Payment> for PaymentDao<Payment> {
+impl Dao<Payment> for ECommerceDo<Payment> {
     type Database = MySqlDatabase;
 
     fn new(database: Self::Database) -> Self {
-        PaymentDao {
+        ECommerceDo {
             database,
             _table: PhantomData,
         }
@@ -287,7 +276,7 @@ fn setup_ecommerce_test_db() -> MySqlDatabase {
         username: "root".to_string(),
         password: "root".to_string(),
         database_name: "ecommerce_test".to_string(),
-        max_size: 30,
+        max_size: 10,
     };
     let db = MySqlDatabase::connect(config).unwrap();
 
@@ -378,8 +367,8 @@ fn create_test_payment() -> Payment {
 #[serial]
 fn test_add_product_to_cart() {
     let db = setup_ecommerce_test_db();
-    let product_dao = ProductDao::new(db.clone());
-    let cart_dao = CartItemDao::new(db.clone());
+    let product_dao = ECommerceDo::new(db.clone());
+    let cart_dao = ECommerceDo::new(db.clone());
 
     // 创建测试商品
     let product = create_test_product();
@@ -402,7 +391,7 @@ fn test_add_product_to_cart() {
 #[serial]
 fn test_remove_product_from_cart() {
     let db = setup_ecommerce_test_db();
-    let cart_dao = CartItemDao::new(db.clone());
+    let cart_dao = ECommerceDo::new(db.clone());
 
     // 添加商品到购物车
     let cart_item = create_test_cart_item();
@@ -422,7 +411,7 @@ fn test_remove_product_from_cart() {
 #[serial]
 fn test_update_cart_item_quantity() {
     let db = setup_ecommerce_test_db();
-    let cart_dao = CartItemDao::new(db.clone());
+    let cart_dao = ECommerceDo::new(db.clone());
 
     // 添加商品到购物车
     let mut cart_item = create_test_cart_item();
@@ -443,7 +432,7 @@ fn test_update_cart_item_quantity() {
 #[serial]
 fn test_payment_process() {
     let db = setup_ecommerce_test_db();
-    let payment_dao = PaymentDao::new(db.clone());
+    let payment_dao = ECommerceDo::new(db.clone());
 
     // 创建测试订单
     let order_id = 1;
@@ -465,7 +454,7 @@ fn test_payment_process() {
 #[serial]
 fn test_stock_update() {
     let db = setup_ecommerce_test_db();
-    let product_dao = ProductDao::new(db.clone());
+    let product_dao = ECommerceDo::new(db.clone());
 
     // 创建测试商品
     let mut product = create_test_product();
@@ -486,9 +475,9 @@ fn test_stock_update() {
 #[serial]
 fn test_transaction() {
     let db = setup_ecommerce_test_db();
-    let product_dao = ProductDao::new(db.clone());
-    let cart_dao = CartItemDao::new(db.clone());
-    let payment_dao = PaymentDao::new(db.clone());
+    let product_dao = ECommerceDo::new(db.clone());
+    let cart_dao = ECommerceDo::new(db.clone());
+    let payment_dao = ECommerceDo::new(db.clone());
 
     // 开始事务
     let result = product_dao.begin_transaction();
@@ -530,8 +519,8 @@ fn test_transaction() {
 #[serial]
 fn test_transaction_rollback() {
     let db = setup_ecommerce_test_db();
-    let product_dao = ProductDao::new(db.clone());
-    let cart_dao = CartItemDao::new(db.clone());
+    let product_dao = ECommerceDo::new(db.clone());
+    let cart_dao = ECommerceDo::new(db.clone());
 
     // 开始事务
     let result = product_dao.begin_transaction();
