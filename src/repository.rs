@@ -1,3 +1,4 @@
+/*
 // 仓储层
 
 use super::*;
@@ -107,3 +108,5 @@ impl Repository for UserRepository {
         self.delete(id)
     }
 }
+
+*/

@@ -1,3 +1,4 @@
+/*
 // 控制层
 
 use super::*;
@@ -81,3 +82,5 @@ impl UserController {
         self.service.delete_user(id)
     }
 }
+
+*/

@@ -1,3 +1,4 @@
+/*
 // 服务层
 use super::*;
 
@@ -51,3 +52,5 @@ impl UserService {
         self.repository.delete(id)
     }
 }
+
+*/

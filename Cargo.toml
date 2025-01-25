@@ -11,8 +11,17 @@ r2d2 = "0.8"
 r2d2_sqlite = "0.22"
 mysql = "23.0"
 r2d2_mysql = "23.0"
+async-trait = "0.1.85"
+http = "1.2.0"
+axum = "0.8.1"
+tower-service = "0.3.3"
+tokio = {version = "1.43", features = ["sync", "macros", "rt", "rt-multi-thread", "signal"]}
+tower = "0.5.2"
+
+
 
 
 [dev-dependencies]
 serial_test = "3.2.0"
 tempfile = "3.2"
+reqwest = "0.12.12"
