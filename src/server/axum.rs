@@ -41,7 +41,7 @@ impl Server for AxumServer {
         &mut self,
         path: &str,
         method: http::Method,
-        handler: fn(Self::Context) -> Result<Self::Response, Self::Error>,
+        handler: fn(Self::Request) -> Result<Self::Response, Self::Error>,
     ) {
         async fn handler_wrapper<F, T, E>(
             req: AxumRequest,
@@ -67,23 +67,7 @@ impl Server for AxumServer {
         };
         self.router = self.router.clone().route(path, route);
     }
-/*
-    fn add_middleware(&mut self, middleware: Self::Middleware) {
-        async fn middleware_wrapper(
-            req: AxumRequest,
-            next: Next<Body>,
-        ) -> impl IntoResponse {
-            middleware(req, next).await
-        }
-        self.router = self.router.layer(middleware::from_fn(middleware_wrapper));
-    }
-        fn add_middleware(&mut self, middleware: Self::Middleware) {
-            let middleware_wrapper = |req: AxumRequest, next: Next<Body>| async move {
-                middleware(req, next).await
-            };
-            self.router = self.router.layer(middleware::from_fn(middleware_wrapper));
-        }
- */   
+  
 
     async fn handle_request(&self, _request: Self::Request) -> Result<Self::Response, Self::Error> {
         // Axum 会自动处理请求，这里不需要做任何事情

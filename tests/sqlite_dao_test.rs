@@ -1,5 +1,5 @@
-use bootust::dao::Dao;
-use bootust::database::{
+use bootrust::dao::Dao;
+use bootrust::database::{
     sqlite::SqliteDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
 use chrono::{DateTime, Utc};

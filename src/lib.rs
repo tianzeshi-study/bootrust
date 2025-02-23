@@ -1,4 +1,4 @@
-pub mod server;
+// pub mod server;
 pub mod controller;
 pub mod service;
 pub mod repository;

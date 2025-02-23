@@ -1,4 +1,5 @@
 pub mod axum;
+// pub mod actix;
 
 use async_trait::async_trait;
 use http::{Request, Response, StatusCode};
@@ -12,7 +13,7 @@ pub trait Server{
     type Context;
 
     // 路由
-    fn route(&mut self, path: &str, method: http::Method, handler: fn(Self::Context) -> Result<Self::Response, Self::Error>);
+    fn route(&mut self, path: &str, method: http::Method, handler: fn(Self::Request) -> Result<Self::Response, Self::Error>);
 
     // 添加中间件
     // fn add_middleware(&mut self, middleware: Self::Middleware);
