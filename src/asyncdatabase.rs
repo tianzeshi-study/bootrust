@@ -73,7 +73,8 @@ pub enum DbError {
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
-    Integer(i64),
+    Integer(i32),
+    Bigint(i64),
     Float(f32),
     Double(f64),
     Text(String),

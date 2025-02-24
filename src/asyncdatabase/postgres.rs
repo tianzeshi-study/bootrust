@@ -67,6 +67,7 @@ impl RelationalDatabase for PostgresDatabase {
         let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
         let params = params.iter().map(|v| match v {
             Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+            Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
 Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
@@ -84,6 +85,7 @@ Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
         let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
         let params = params.iter().map(|v| match v {
             Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+            Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
 Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
@@ -102,6 +104,7 @@ Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
         let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
         let params = params.iter().map(|v| match v {
             Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+            Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
 Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
@@ -147,11 +150,12 @@ impl PostgresDatabase {
                 // 根据列的类型进行值的转换
                 let value = match column.type_() {
                     &tokio_postgres::types::Type::INT4 => {
-                        let num: i64 = row.get::<usize, i32>(i) as i64;
-                        Value::Integer(num)
+                        // let num: i64 = row.get::<usize, i32>(i) as i64;
+                        // Value::Integer(num)
+                        Value::Integer(row.get(i))
                     },
                     &tokio_postgres::types::Type::INT8 => {
-                        Value::Integer(row.get(i))
+                        Value::Bigint(row.get(i))
                     },
                     &tokio_postgres::types::Type::TEXT => {
                         Value::Text(row.get(i))
@@ -224,7 +228,7 @@ mod tests {
         let db = setup_test_db().await;
         db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
         db.execute(
-            "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), age INT8)",
+            "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), age INT)",
             vec![],
         )
         .await
@@ -268,7 +272,7 @@ mod tests {
             "INSERT INTO users (name, age, created_at) VALUES ($1, $2, $3)",
             vec![
                 Value::Text("Alice".to_string()),
-                Value::Integer(30),
+                Value::Bigint(30),
                 Value::DateTime(now),
             ],
         )
@@ -284,7 +288,7 @@ mod tests {
         assert_eq!(rows[0].values.len(), 4);
         assert!(matches!(rows[0].values[0], Value::Integer(_)));
         assert!(matches!(rows[0].values[1], Value::Text(_)));
-        assert!(matches!(rows[0].values[2], Value::Integer(_)));
+        assert!(matches!(rows[0].values[2], Value::Bigint(_)));
         assert!(matches!(rows[0].values[3], Value::DateTime(_)));
 
         if let Value::Text(name) = &rows[0].values[1] {
@@ -293,7 +297,7 @@ mod tests {
             panic!("Expected name to be a string");
         }
 
-        if let Value::Integer(age) = &rows[0].values[2] {
+        if let Value::Bigint(age) = &rows[0].values[2] {
             assert_eq!(age, &30);
         } else {
             panic!("Expected age to be an integer");
