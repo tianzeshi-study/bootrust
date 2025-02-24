@@ -1,21 +1,21 @@
 use crate::database::{
-    Connection as DbConnection, Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
+    Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
-use chrono::{DateTime, Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
-use mysql::{Opts, OptsBuilder};
+use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
+use mysql::{OptsBuilder};
 use r2d2::{Pool, PooledConnection};
 use r2d2_mysql::mysql::{prelude::*, Value as MySqlValue};
-use r2d2_mysql::MysqlConnectionManager;
+use r2d2_mysql::MySqlConnectionManager;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
 pub struct MySqlDatabase {
-    pool: Arc<Pool<MysqlConnectionManager>>,
-    current_transaction: Arc<Mutex<Option<PooledConnection<MysqlConnectionManager>>>>,
+    pool: Arc<Pool<MySqlConnectionManager>>,
+    current_transaction: Arc<Mutex<Option<PooledConnection<MySqlConnectionManager>>>>,
 }
 
 impl MySqlDatabase {
-    fn new_pool(config: &DatabaseConfig) -> Result<Pool<MysqlConnectionManager>, r2d2::Error> {
+    fn new_pool(config: &DatabaseConfig) -> Result<Pool<MySqlConnectionManager>, r2d2::Error> {
         let opts = OptsBuilder::new()
             .ip_or_hostname(Some(&config.host))
             .tcp_port(config.port)
@@ -23,7 +23,7 @@ impl MySqlDatabase {
             .pass(Some(&config.password))
             .db_name(Some(&config.database_name));
 
-        let manager = MysqlConnectionManager::new(opts);
+        let manager = MySqlConnectionManager::new(opts);
         Pool::builder().max_size(config.max_size).build(manager)
     }
 
@@ -79,8 +79,8 @@ impl MySqlDatabase {
 
     fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where
-        // F: FnOnce(&mut PooledConnection<MysqlConnectionManager>) -> Result<T, DbError>
-        F: FnOnce(&mut PooledConnection<MysqlConnectionManager>) -> Result<T, DbError>,
+        // F: FnOnce(&mut PooledConnection<MySqlConnectionManager>) -> Result<T, DbError>
+        F: FnOnce(&mut PooledConnection<MySqlConnectionManager>) -> Result<T, DbError>,
     {
         let mut transaction_guard = self
             .current_transaction
@@ -194,7 +194,7 @@ impl RelationalDatabase for MySqlDatabase {
                     let mut values = Vec::new();
                     let columns = row.columns();
 
-                    for (i, column) in columns.iter().enumerate() {
+                    for (i, _column) in columns.iter().enumerate() {
                         let value = row.get(i).ok_or_else(|| {
                             DbError::QueryError("Missing column value".to_string())
                         })?;

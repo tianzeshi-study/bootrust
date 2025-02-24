@@ -1,5 +1,4 @@
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
-use std::collections::HashMap;
 
 #[async_trait::async_trait]
 pub trait Dao<T>
@@ -95,7 +94,7 @@ where
     /// 更新记录
     async fn update(&self, entity: &T) -> Result<u64, DbError> {
 
-        let map = Self::entity_to_map(entity.clone());
+        let map = Self::entity_to_map(entity);
         let mut values: Vec<Value> = Vec::new();
 
         let mut primary_value = None;

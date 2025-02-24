@@ -1,10 +1,10 @@
 use crate::database::{
-    Connection as DbConnection, Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
+    Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{
-    params_from_iter, types::Type, Connection as SqliteConn, Result as SqliteResult, ToSql,
+    types::Type, ToSql,
 };
 use std::sync::{Arc, Mutex};
 
@@ -49,22 +49,7 @@ impl SqliteDatabase {
         }
     }
 
-    fn get_current_connection(&self) -> Result<PooledConnection<SqliteConnectionManager>, DbError> {
-        let transaction_guard = self
-            .current_transaction
-            .lock()
-            .map_err(|e| DbError::TransactionError(e.to_string()))?;
 
-        if let Some(_) = *transaction_guard {
-            Err(DbError::TransactionError(
-                "Cannot get connection during transaction".to_string(),
-            ))
-        } else {
-            self.pool
-                .get()
-                .map_err(|e| DbError::ConnectionError(e.to_string()))
-        }
-    }
 
     fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where

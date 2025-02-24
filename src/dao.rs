@@ -1,5 +1,4 @@
 use crate::database::{DbError, RelationalDatabase, Row, Value};
-use std::collections::HashMap;
 
 /// 通用的数据访问对象trait
 pub trait Dao<T>
@@ -100,7 +99,7 @@ where
     /// 更新记录
     fn update(&self, entity: &T) -> Result<u64, DbError> {
 
-        let map = Self::entity_to_map(entity.clone());
+        let map = Self::entity_to_map(entity);
         let mut values: Vec<Value> = Vec::new();
 
         let mut primary_value = None;
