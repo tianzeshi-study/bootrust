@@ -4,6 +4,8 @@ pub mod service;
 pub mod repository;
 pub mod dao;
 pub mod database;
+pub mod asyncdatabase;
+pub mod asyncdao;
 pub mod entity;
 
 
