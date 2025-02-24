@@ -4,6 +4,7 @@ use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
 use crate::asyncdatabase::{DatabaseConfig, DbError, RelationalDatabase, Row, Value};
 
+#[derive(Debug, Clone)]
 pub struct PostgresDatabase {
   pool: Pool<PostgresConnectionManager<NoTls>>,
 }
@@ -65,7 +66,7 @@ impl RelationalDatabase for PostgresDatabase {
 
     async fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
         let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        let params = params.iter().map(|v| match v {
+        let params = params.iter().map(|v|       match v {
             Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
             Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),

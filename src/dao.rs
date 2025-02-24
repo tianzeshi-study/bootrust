@@ -143,10 +143,12 @@ where
 
     /// 删除记录
     fn delete(&self, id: Value) -> Result<u64, DbError> {
+        let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
         let query = format!(
-            "DELETE FROM {} WHERE {} = ?",
+            "DELETE FROM {} WHERE {} = {}",
             Self::table_name(),
-            Self::primary_key_column()
+            Self::primary_key_column(),
+            placeholder
         );
 
         self.database().execute(&query, vec![id])

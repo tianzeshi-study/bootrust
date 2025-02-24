@@ -2,7 +2,7 @@ use bootrust::dao::Dao;
 use bootrust::database::{
     sqlite::SqliteDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
-use chrono::{DateTime, Utc};
+use chrono::{Utc};
 use std::marker::PhantomData;
 
 

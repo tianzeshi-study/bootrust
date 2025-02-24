@@ -2,7 +2,7 @@ use bootrust::dao::Dao;
 use bootrust::database::{
     mysql::MySqlDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
-use chrono::{DateTime, Utc};
+use chrono::{Utc};
 use serial_test::serial;
 use std::marker::PhantomData;
 
