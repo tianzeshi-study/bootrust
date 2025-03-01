@@ -23,7 +23,7 @@ impl SqliteDatabase {
     fn value_to_sql(value: &Value) -> Box<dyn ToSql> {
         match value {
             Value::Null => Box::new(None::<String>),
-            Value::Integer(i) => Box::new(*i),
+            Value::Bigint(i) => Box::new(*i),
             Value::Float(f) => Box::new(*f),
             Value::Double(f) => Box::new(*f),
             Value::Text(s) => Box::new(s.clone()),
@@ -37,7 +37,7 @@ impl SqliteDatabase {
     fn convert_sql_to_value(value: rusqlite::types::ValueRef) -> Result<Value, rusqlite::Error> {
         match value {
             rusqlite::types::ValueRef::Null => Ok(Value::Null),
-            rusqlite::types::ValueRef::Integer(i) => Ok(Value::Integer(i)),
+            rusqlite::types::ValueRef::Integer(i) => Ok(Value::Bigint(i)),
             rusqlite::types::ValueRef::Real(f) => Ok(Value::Double(f)),
             rusqlite::types::ValueRef::Text(s) => {
                 Ok(Value::Text(String::from_utf8_lossy(s).into_owned()))
@@ -262,7 +262,7 @@ mod tests {
         let insert = "INSERT INTO test (name, age) VALUES ($1, $2)";
         let result = db.execute(
             insert,
-            vec![Value::Text("Alice".to_string()), Value::Integer(25)],
+            vec![Value::Text("Alice".to_string()), Value::Bigint(25)],
         );
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 1);
@@ -281,7 +281,7 @@ mod tests {
 
         db.execute(
             "INSERT INTO test (name, age) VALUES ($1, $2)",
-            vec![Value::Text("Bob".to_string()), Value::Integer(30)],
+            vec![Value::Text("Bob".to_string()), Value::Bigint(30)],
         )
         .unwrap();
 
@@ -299,7 +299,7 @@ mod tests {
         }
 
         match &row.values[2] {
-            Value::Integer(age) => assert_eq!(*age, 30),
+            Value::Bigint(age) => assert_eq!(*age, 30),
             _ => panic!("Expected Integer value"),
         }
     }
@@ -364,7 +364,7 @@ mod tests {
             "INSERT INTO test_types (int_val, float_val, text_val, null_val, datetime_val) 
              VALUES ($1, $2, $3, $4, $5)",
             vec![
-                Value::Integer(42),
+                Value::Bigint(42),
                 Value::Double(3.14),
                 Value::Text("hello".to_string()),
                 Value::Null,
@@ -378,7 +378,7 @@ mod tests {
 
         let row = &rows[0];
         match &row.values[1] {
-            Value::Integer(i) => assert_eq!(*i, 42),
+            Value::Bigint(i) => assert_eq!(*i, 42),
             _ => panic!("Expected Integer"),
         }
 

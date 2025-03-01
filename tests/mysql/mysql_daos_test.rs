@@ -64,7 +64,7 @@ impl Dao<User> for UserDao<User> {
 
         Ok(User {
             id: match &row.values[0] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
             },
             username: match &row.values[1] {
@@ -90,7 +90,7 @@ impl Dao<User> for UserDao<User> {
             },
             active: match &row.values[4] {
                 // Value::Boolean(b) => *b as i64,
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid active type".to_string())),
             },
         })
@@ -102,14 +102,14 @@ impl Dao<User> for UserDao<User> {
 
     fn entity_to_map(entity: &User) -> Vec<(String, Value)> {
         let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Integer(entity.id)));
+        map.push(("id".to_string(), Value::Bigint(entity.id)));
         map.push(("username".to_string(), Value::Text(entity.username.clone())));
         map.push(("email".to_string(), Value::Text(entity.email.clone())));
         map.push((
             "created_at".to_string(),
             Value::Text(entity.created_at.clone()),
         ));
-        map.push(("active".to_string(), Value::Integer(entity.active)));
+        map.push(("active".to_string(), Value::Bigint(entity.active)));
         map
     }
 
@@ -145,11 +145,11 @@ impl Dao<Order> for UserDao<Order> {
 
         Ok(Order {
             id: match &row.values[0] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
             },
             user_id: match &row.values[1] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
             },
             product_name: match &row.values[2] {
@@ -169,8 +169,8 @@ impl Dao<Order> for UserDao<Order> {
 
     fn entity_to_map(entity: &Order) -> Vec<(String, Value)> {
         let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Integer(entity.id)));
-        map.push(("user_id".to_string(), Value::Integer(entity.user_id)));
+        map.push(("id".to_string(), Value::Bigint(entity.id)));
+        map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
         map.push(("product_name".to_string(), Value::Text(entity.product_name.clone())));
         map.push(("amount".to_string(), Value::Float(entity.amount)));
         map.push(("created_at".to_string(), Value::Text(entity.created_at.clone())));
@@ -209,11 +209,11 @@ impl Dao<Comment> for UserDao<Comment> {
 
         Ok(Comment {
             id: match &row.values[0] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
             },
             user_id: match &row.values[1] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
             },
             content: match &row.values[2] {
@@ -229,8 +229,8 @@ impl Dao<Comment> for UserDao<Comment> {
 
     fn entity_to_map(entity: &Comment) -> Vec<(String, Value)> {
         let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Integer(entity.id)));
-        map.push(("user_id".to_string(), Value::Integer(entity.user_id)));
+        map.push(("id".to_string(), Value::Bigint(entity.id)));
+        map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
         map.push(("content".to_string(), Value::Text(entity.content.clone())));
         map.push(("created_at".to_string(), Value::Text(entity.created_at.clone())));
         map
@@ -353,7 +353,7 @@ fn test_find_user_by_id() {
     dao.create(&user).unwrap();
 
     // 查找用户
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_some());
 
     let found_user = found.unwrap();
@@ -402,7 +402,7 @@ fn test_update_user() {
     assert!(result.is_ok());
 
     // 验证更新
-    let updated = dao.find_by_id(Value::Integer(1)).unwrap().unwrap();
+    let updated = dao.find_by_id(Value::Bigint(1)).unwrap().unwrap();
     assert_eq!(updated.email, "updated@example.com");
 }
 
@@ -417,11 +417,11 @@ fn test_delete_user() {
     dao.create(&user).unwrap();
 
     // 删除用户
-    let result = dao.delete(Value::Integer(1));
+    let result = dao.delete(Value::Bigint(1));
     assert!(result.is_ok());
 
     // 验证删除
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_none());
 }
 
@@ -468,7 +468,7 @@ fn test_find_order_by_id() {
 
     dao.create(&order).unwrap();
 
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_some());
 
     let found_order = found.unwrap();
@@ -511,7 +511,7 @@ fn test_update_order() {
 
     assert!(result.is_ok());
 
-    let updated = dao.find_by_id(Value::Integer(1)).unwrap().unwrap();
+    let updated = dao.find_by_id(Value::Bigint(1)).unwrap().unwrap();
     // assert_eq!(updated.amount, 199.99);
     assert!((updated.amount - 199.99).abs() < 0.00001);
 }
@@ -525,10 +525,10 @@ fn test_delete_order() {
 
     dao.create(&order).unwrap();
 
-    let result = dao.delete(Value::Integer(1));
+    let result = dao.delete(Value::Bigint(1));
     assert!(result.is_ok());
 
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_none());
 }
 
@@ -553,7 +553,7 @@ fn test_find_comment_by_id() {
 
     dao.create(&comment).unwrap();
 
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_some());
 
     let found_comment = found.unwrap();
@@ -594,7 +594,7 @@ fn test_update_comment() {
 
     assert!(result.is_ok());
 
-    let updated = dao.find_by_id(Value::Integer(1)).unwrap().unwrap();
+    let updated = dao.find_by_id(Value::Bigint(1)).unwrap().unwrap();
     assert_eq!(updated.content, "Updated comment.");
 }
 
@@ -607,10 +607,10 @@ fn test_delete_comment() {
 
     dao.create(&comment).unwrap();
 
-    let result = dao.delete(Value::Integer(1));
+    let result = dao.delete(Value::Bigint(1));
     assert!(result.is_ok());
 
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_none());
 }
 
@@ -625,7 +625,7 @@ fn test_find_info_by_id() {
     dao.create(&user).unwrap();
 
     // 查找用户
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_some());
 
     let found_user = found.unwrap();
@@ -639,7 +639,7 @@ fn test_find_info_by_id() {
 
     dao.create(&order).unwrap();
 
-    let found1 = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found1 = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found1.is_some());
 
     let found_order = found1.unwrap();
@@ -655,7 +655,7 @@ fn test_find_info_by_id() {
 
     dao.create(&comment).unwrap();
 
-    let found = dao.find_by_id(Value::Integer(1)).unwrap();
+    let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_some());
 
     let found_comment = found.unwrap();
@@ -688,14 +688,14 @@ fn test_find_info_by_user_id() {
 
     // 根据用户ID查找订单
     let orders = order_dao
-        .find_by_condition("user_id = ?", vec![Value::Integer(user.id)])
+        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
         .unwrap();
     assert_eq!(orders.len(), 1);
     assert_eq!(orders[0].user_id, user.id);
 
     // 根据用户ID查找评论
     let comments = comment_dao
-        .find_by_condition("user_id = ?", vec![Value::Integer(user.id)])
+        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
         .unwrap();
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].user_id, user.id);
@@ -725,18 +725,18 @@ fn test_delete_info_by_user_id() {
 
     // 删除指定用户ID的所有内容
     let orders = order_dao
-        .find_by_condition("user_id = ?", vec![Value::Integer(user.id)])
+        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
         .unwrap();
     for order in orders {
-        order_dao.delete(Value::Integer(order.id)).unwrap();
+        order_dao.delete(Value::Bigint(order.id)).unwrap();
     }
     let comments = comment_dao
-        .find_by_condition("user_id = ?", vec![Value::Integer(user.id)])
+        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
         .unwrap();
     for comment in comments {
-        comment_dao.delete(Value::Integer(comment.id)).unwrap();
+        comment_dao.delete(Value::Bigint(comment.id)).unwrap();
     }
-    user_dao.delete(Value::Integer(user.id)).unwrap();
+    user_dao.delete(Value::Bigint(user.id)).unwrap();
 }
 
 #[test]
@@ -773,13 +773,13 @@ fn test_multi_step_transaction() {
     assert!(result.is_ok());
 
     // 验证用户、订单和评论是否已创建
-    let found_user = user_dao.find_by_id(Value::Integer(user.id)).unwrap();
+    let found_user = user_dao.find_by_id(Value::Bigint(user.id)).unwrap();
     assert!(found_user.is_some());
 
-    let found_order = order_dao.find_by_id(Value::Integer(order.id)).unwrap();
+    let found_order = order_dao.find_by_id(Value::Bigint(order.id)).unwrap();
     assert!(found_order.is_some());
 
-    let found_comment = comment_dao.find_by_id(Value::Integer(comment.id)).unwrap();
+    let found_comment = comment_dao.find_by_id(Value::Bigint(comment.id)).unwrap();
     assert!(found_comment.is_some());
 }
 
@@ -818,12 +818,12 @@ fn test_multi_step_transaction_rollback() {
     assert!(result.is_ok());
 
     // 验证用户、订单和评论是否未创建
-    let found_user = user_dao.find_by_id(Value::Integer(user.id)).unwrap();
+    let found_user = user_dao.find_by_id(Value::Bigint(user.id)).unwrap();
     assert!(found_user.is_none());
 
-    let found_order = order_dao.find_by_id(Value::Integer(order.id)).unwrap();
+    let found_order = order_dao.find_by_id(Value::Bigint(order.id)).unwrap();
     assert!(found_order.is_none());
 
-    let found_comment = comment_dao.find_by_id(Value::Integer(comment.id)).unwrap();
+    let found_comment = comment_dao.find_by_id(Value::Bigint(comment.id)).unwrap();
     assert!(found_comment.is_none());
 }

@@ -30,7 +30,7 @@ impl MySqlDatabase {
     fn value_to_mysql(value: &Value) -> MySqlValue {
         match value {
             Value::Null => MySqlValue::NULL,
-            Value::Integer(i) => MySqlValue::Int(*i),
+            Value::Bigint(i) => MySqlValue::Int(*i),
             Value::Float(f) => MySqlValue::Float(*f as f32),
             Value::Double(f) => MySqlValue::Double(*f),
             Value::Text(s) => MySqlValue::Bytes(s.clone().into_bytes()),
@@ -52,7 +52,7 @@ impl MySqlDatabase {
     fn convert_mysql_to_value(value: MySqlValue) -> Result<Value, DbError> {
         match value {
             MySqlValue::NULL => Ok(Value::Null),
-            MySqlValue::Int(i) => Ok(Value::Integer(i)),
+            MySqlValue::Int(i) => Ok(Value::Bigint(i)),
             MySqlValue::Float(f) => Ok(Value::Float(f)),
             MySqlValue::Double(f) => Ok(Value::Double(f)),
             MySqlValue::Bytes(bytes) => Ok(Value::Text(
@@ -276,7 +276,7 @@ mod tests {
         let affected_rows = db
             .execute(
                 "INSERT INTO users (name, age) VALUES (?, ?)",
-                vec![Value::Text("Alice".to_string()), Value::Integer(30)],
+                vec![Value::Text("Alice".to_string()), Value::Bigint(30)],
             )
             .unwrap();
         assert_eq!(affected_rows, 1);
@@ -284,7 +284,7 @@ mod tests {
         let affected_rows = db
             .execute(
                 "UPDATE users SET age = ? WHERE name = ?",
-                vec![Value::Integer(31), Value::Text("Alice".to_string())],
+                vec![Value::Bigint(31), Value::Text("Alice".to_string())],
             )
             .unwrap();
         assert_eq!(affected_rows, 1);
@@ -309,7 +309,7 @@ mod tests {
             "INSERT INTO users (name, age, created_at) VALUES (?, ?, ?)",
             vec![
                 Value::Text("Alice".to_string()),
-                Value::Integer(30),
+                Value::Bigint(30),
                 Value::DateTime(now),
             ],
         )
@@ -321,9 +321,9 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].columns, vec!["id", "name", "age", "created_at"]);
         assert_eq!(rows[0].values.len(), 4);
-        assert!(matches!(rows[0].values[0], Value::Integer(_)));
+        assert!(matches!(rows[0].values[0], Value::Bigint(_)));
         assert!(matches!(rows[0].values[1], Value::Text(_)));
-        assert!(matches!(rows[0].values[2], Value::Integer(_)));
+        assert!(matches!(rows[0].values[2], Value::Bigint(_)));
         assert!(matches!(rows[0].values[3], Value::DateTime(_)));
 
         if let Value::Text(name) = &rows[0].values[1] {
@@ -332,7 +332,7 @@ mod tests {
             panic!("Expected name to be a string");
         }
 
-        if let Value::Integer(age) = &rows[0].values[2] {
+        if let Value::Bigint(age) = &rows[0].values[2] {
             assert_eq!(age, &30);
         } else {
             panic!("Expected age to be an integer");

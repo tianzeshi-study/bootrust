@@ -67,7 +67,7 @@ impl Dao<Product> for ECommerceDo<Product> {
 
         Ok(Product {
             id: match &row.values[0] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
             },
             name: match &row.values[1] {
@@ -91,7 +91,7 @@ impl Dao<Product> for ECommerceDo<Product> {
                 _ => return Err(DbError::ConversionError("Invalid price type".to_string())),
             },
             stock: match &row.values[4] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid stock type".to_string())),
             },
             created_at: match &row.values[5] {
@@ -107,11 +107,11 @@ impl Dao<Product> for ECommerceDo<Product> {
 
     fn entity_to_map(entity: &Product) -> Vec<(String, Value)> {
         let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Integer(entity.id)));
+        map.push(("id".to_string(), Value::Bigint(entity.id)));
         map.push(("name".to_string(), Value::Text(entity.name.clone())));
         map.push(("description".to_string(), Value::Text(entity.description.clone())));
         map.push(("price".to_string(), Value::Double(entity.price)));
-        map.push(("stock".to_string(), Value::Integer(entity.stock)));
+        map.push(("stock".to_string(), Value::Bigint(entity.stock)));
         map.push((
             "created_at".to_string(),
             Value::DateTime(entity.created_at),
@@ -152,19 +152,19 @@ impl Dao<CartItem> for ECommerceDo<CartItem> {
 
         Ok(CartItem {
             id: match &row.values[0] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
             },
             user_id: match &row.values[1] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
             },
             product_id: match &row.values[2] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid product_id type".to_string())),
             },
             quantity: match &row.values[3] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid quantity type".to_string())),
             },
             added_at: match &row.values[4] {
@@ -176,10 +176,10 @@ impl Dao<CartItem> for ECommerceDo<CartItem> {
 
     fn entity_to_map(entity: &CartItem) -> Vec<(String, Value)> {
         let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Integer(entity.id)));
-        map.push(("user_id".to_string(), Value::Integer(entity.user_id)));
-        map.push(("product_id".to_string(), Value::Integer(entity.product_id)));
-        map.push(("quantity".to_string(), Value::Integer(entity.quantity)));
+        map.push(("id".to_string(), Value::Bigint(entity.id)));
+        map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
+        map.push(("product_id".to_string(), Value::Bigint(entity.product_id)));
+        map.push(("quantity".to_string(), Value::Bigint(entity.quantity)));
         map.push(("added_at".to_string(), Value::DateTime(entity.added_at)));
         map
     }
@@ -216,11 +216,11 @@ impl Dao<Payment> for ECommerceDo<Payment> {
 
         Ok(Payment {
             id: match &row.values[0] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
             },
             order_id: match &row.values[1] {
-                Value::Integer(i) => *i,
+                Value::Bigint(i) => *i,
                 _ => return Err(DbError::ConversionError("Invalid order_id type".to_string())),
             },
             amount: match &row.values[2] {
@@ -244,8 +244,8 @@ impl Dao<Payment> for ECommerceDo<Payment> {
 
     fn entity_to_map(entity: &Payment) -> Vec<(String, Value)> {
         let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Integer(entity.id)));
-        map.push(("order_id".to_string(), Value::Integer(entity.order_id)));
+        map.push(("id".to_string(), Value::Bigint(entity.id)));
+        map.push(("order_id".to_string(), Value::Bigint(entity.order_id)));
         map.push(("amount".to_string(), Value::Double(entity.amount)));
         map.push((
             "payment_method".to_string(),
@@ -381,7 +381,7 @@ fn test_add_product_to_cart() {
     assert!(result.is_ok());
 
     // 验证购物车项是否添加成功
-    let added_item = cart_dao.find_by_id(Value::Integer(cart_item.id)).unwrap();
+    let added_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
     assert!(added_item.is_some());
     assert_eq!(added_item.unwrap().product_id, product.id);
 }
@@ -398,11 +398,11 @@ fn test_remove_product_from_cart() {
     cart_dao.create(&cart_item).unwrap();
 
     // 从购物车移除商品
-    let result = cart_dao.delete(Value::Integer(cart_item.id));
+    let result = cart_dao.delete(Value::Bigint(cart_item.id));
     assert!(result.is_ok());
 
     // 验证购物车项是否已移除
-    let removed_item = cart_dao.find_by_id(Value::Integer(cart_item.id)).unwrap();
+    let removed_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
     assert!(removed_item.is_none());
 }
 
@@ -423,7 +423,7 @@ fn test_update_cart_item_quantity() {
     assert!(result.is_ok());
 
     // 验证购物车商品数量是否更新
-    let updated_item = cart_dao.find_by_id(Value::Integer(cart_item.id)).unwrap();
+    let updated_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
     assert_eq!(updated_item.unwrap().quantity, 3);
 }
 
@@ -444,7 +444,7 @@ fn test_payment_process() {
     assert!(result.is_ok());
 
     // 验证支付信息是否保存成功
-    let saved_payment = payment_dao.find_by_id(Value::Integer(payment.id)).unwrap();
+    let saved_payment = payment_dao.find_by_id(Value::Bigint(payment.id)).unwrap();
     assert!(saved_payment.is_some());
     assert_eq!(saved_payment.unwrap().order_id, order_id);
 }
@@ -466,7 +466,7 @@ fn test_stock_update() {
     assert!(result.is_ok());
 
     // 验证商品库存是否更新
-    let updated_product = product_dao.find_by_id(Value::Integer(product.id)).unwrap();
+    let updated_product = product_dao.find_by_id(Value::Bigint(product.id)).unwrap();
     assert_eq!(updated_product.unwrap().stock, 50);
 }
 
@@ -504,13 +504,13 @@ fn test_transaction() {
     assert!(result.is_ok());
 
     // 验证商品、购物车项和支付信息是否已创建
-    let found_product = product_dao.find_by_id(Value::Integer(product.id)).unwrap();
+    let found_product = product_dao.find_by_id(Value::Bigint(product.id)).unwrap();
     assert!(found_product.is_some());
 
-    let found_cart_item = cart_dao.find_by_id(Value::Integer(cart_item.id)).unwrap();
+    let found_cart_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
     assert!(found_cart_item.is_some());
 
-    let found_payment = payment_dao.find_by_id(Value::Integer(payment.id)).unwrap();
+    let found_payment = payment_dao.find_by_id(Value::Bigint(payment.id)).unwrap();
     assert!(found_payment.is_some());
 }
 
@@ -542,9 +542,9 @@ fn test_transaction_rollback() {
     assert!(result.is_ok());
 
     // 验证商品和购物车项是否未创建
-    let found_product = product_dao.find_by_id(Value::Integer(product.id)).unwrap();
+    let found_product = product_dao.find_by_id(Value::Bigint(product.id)).unwrap();
     assert!(found_product.is_none());
 
-    let found_cart_item = cart_dao.find_by_id(Value::Integer(cart_item.id)).unwrap();
+    let found_cart_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
     assert!(found_cart_item.is_none());
 }
