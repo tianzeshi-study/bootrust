@@ -1,3 +1,4 @@
+#[cfg(feature = "postgresql_async")]
 pub mod postgres;
 
 #[derive(Clone)]

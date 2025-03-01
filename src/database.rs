@@ -1,4 +1,6 @@
+#[cfg(feature = "mysql")]
 pub mod mysql;
+#[cfg(feature = "sqlite")]
 pub mod sqlite;
 // 定义数据库连接配置
 #[derive(Clone)]
@@ -14,17 +16,24 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-        host: "localhost".to_string(),
-        port: 3306,
-        username: "root".to_string(),
-        password: "root".to_string(),
-        database_name: "DefaultDatabase".to_string(),
-        max_size: 16,
+        host: std::env::var("BOOTRUST_DB_HOST").unwrap_or_else(|_| "localhost".to_string()),
+        port: std::env::var("BOOTRUST_DB_PORT")
+        .unwrap_or_else(|_| "3306".to_string())
+        .parse::<u16>()
+        .expect("DB_PORT must be a number"),
+        username: std::env::var("BOOTRUST_DB_USERNAME").unwrap_or_else(|_| "root".to_string()),
+        password: std::env::var("BOOTRUST_DB_PASSWORD").unwrap_or_else(|_| "password".to_string()),
+        database_name: std::env::var("BOOTRUST_DB_DATABASE").unwrap_or_else(|_| "bootrust_default_db".to_string()),
+        max_size: std::env::var("DB_MAX_SIZE")
+        .unwrap_or_else(|_| "20".to_string())
+        .parse::<u32>()
+        .expect("DB_MAX_SIZE must be a number"),
     }
     }
 }
 
 // 定义数据库连接池类型
+#[derive(Debug)]
 pub enum DatabaseType {
     Postgres,
     MySQL,
@@ -32,6 +41,42 @@ pub enum DatabaseType {
     // 可以继续添加其他数据库类型
 }
 
+impl DatabaseType {
+    pub fn from_env() -> Option<Self> {
+        match std::env::var("DATABASE_TYPE").ok()?.to_lowercase().as_str() {
+            "postgres" => Some(DatabaseType::Postgres),
+            "mysql" => Some(DatabaseType::MySQL),
+            "sqlite" => Some(DatabaseType::SQLite),
+            _ => None, 
+        }
+    }
+}
+/*
+pub fn auto_config() -> impl RelationalDatabase {
+    let config = DatabaseConfig::default();
+if let Some(database_type) = DatabaseType::from_env() {
+    match database_type {
+        DatabaseType::Postgres => panic!("not implemented ") ,
+        DatabaseType::MySQL => mysql::MySqlDatabase::connect(config).unwrap(),
+        DatabaseType::SQLite => sqlite::SqliteDatabase::connect(config).unwrap(),
+        _ => panic!("Unknown or missing DATABASE_TYPE"),
+    }
+} else {
+    panic!("please config database via environment  variable or feature!");    
+}
+}
+*/
+#[cfg(all(not(feature="full"), feature="mysql"))]
+pub fn auto_config() -> mysql::MySqlDatabase {
+    let config = DatabaseConfig::default();
+mysql::MySqlDatabase::connect(config).unwrap()
+}
+
+#[cfg(all(not(feature="full"), feature="sqlite"))]
+pub fn auto_config() -> sqlite::SqliteDatabase {
+    let config = DatabaseConfig::default();
+sqlite::SqliteDatabase::connect(config).unwrap()
+}
 // 定义关系型数据库通用接口
 pub trait RelationalDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
