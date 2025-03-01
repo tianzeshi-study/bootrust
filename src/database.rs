@@ -53,21 +53,7 @@ impl DatabaseType {
         }
     }
 }
-/*
-pub fn auto_config() -> impl RelationalDatabase {
-    let config = DatabaseConfig::default();
-if let Some(database_type) = DatabaseType::from_env() {
-    match database_type {
-        DatabaseType::Postgres => panic!("not implemented ") ,
-        DatabaseType::MySQL => mysql::MySqlDatabase::connect(config).unwrap(),
-        DatabaseType::SQLite => sqlite::SqliteDatabase::connect(config).unwrap(),
-        _ => panic!("Unknown or missing DATABASE_TYPE"),
-    }
-} else {
-    panic!("please config database via environment  variable or feature!");    
-}
-}
-*/
+
 #[cfg(all(not(feature="full"), feature="mysql"))]
 pub fn auto_config() -> mysql::MySqlDatabase {
     let config = DatabaseConfig::default();
@@ -119,11 +105,12 @@ pub enum DbError {
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
-    Integer(i64),
+    Integer(i32),
     Bigint(i64),
     Float(f32),
     Double(f64),
     Text(String),
+    Varchar(String),
     Boolean(bool),
     Bytes(Vec<u8>),
     DateTime(chrono::DateTime<chrono::Utc>),

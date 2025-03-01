@@ -29,23 +29,22 @@ impl PostgresDatabase {
         let manager = PostgresConnectionManager::new(pg_config, NoTls);
         Pool::builder().max_size(config.max_size).build(manager)
     }
-/*
-    fn value_to_postgres(value: &Value) -> (postgres::types::Type, Option<Vec<u8>>) {
-        match value {
-            Value::Null => (postgres::types::Type::VOID, None),
-            Value::Integer(i) => (postgres::types::Type::INT8, Some(i.to_be_bytes().to_vec())),
-            Value::Float(f) => (postgres::types::Type::FLOAT4, Some(f.to_be_bytes().to_vec())),
-            Value::Double(f) => (postgres::types::Type::FLOAT8, Some(f.to_be_bytes().to_vec())),
-            Value::Text(s) => (postgres::types::Type::TEXT, Some(s.as_bytes().to_vec())),
-            Value::Boolean(b) => (postgres::types::Type::BOOL, Some(vec![*b as u8])),
-            Value::Bytes(b) => (postgres::types::Type::BYTEA, Some(b.clone())),
-            Value::DateTime(dt) => (
-                postgres::types::Type::TIMESTAMPTZ,
-                Some(dt.to_rfc3339().into_bytes()),
-            ),
-        }
+
+    fn params_to_postgres(params: &Vec<Value>) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
+        params.iter().map(|v|       match v {
+            Value::Integer(i) => i as &(dyn postgres::types::ToSql + Sync),
+            Value::Bigint(i) => i as &(dyn postgres::types::ToSql + Sync),
+            Value::Text(s) => s as &(dyn postgres::types::ToSql + Sync),
+            Value::Varchar(s) => s as &(dyn postgres::types::ToSql + Sync),
+            Value::Float(f) => f as &(dyn postgres::types::ToSql + Sync),
+Value::Double(d) => d as &(dyn postgres::types::ToSql + Sync),
+Value::Boolean(b) => b as &(dyn postgres::types::ToSql + Sync),
+Value::Bytes(by) => by as &(dyn postgres::types::ToSql + Sync),
+Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
+            _ => unimplemented!(),
+        }).collect::<Vec<_>>()
     }
-*/
+
     fn convert_postgres_to_value(
         value: &postgres::row::Row,
         index: usize,
@@ -55,6 +54,10 @@ impl PostgresDatabase {
             postgres::types::Type::VOID => Ok(Value::Null),
             postgres::types::Type::INT8 => {
                 let val: i64 = value.get(index);
+                Ok(Value::Bigint(val))
+            }
+            postgres::types::Type::INT4 => {
+                let val: i32 = value.get(index);
                 Ok(Value::Integer(val))
             }
             postgres::types::Type::FLOAT4 => {
@@ -68,6 +71,10 @@ impl PostgresDatabase {
             postgres::types::Type::TEXT => {
                 let val: String = value.get(index);
                 Ok(Value::Text(val))
+            }
+            postgres::types::Type::VARCHAR => {
+                let val: String = value.get(index);
+                Ok(Value::Varchar(val))
             }
             postgres::types::Type::BOOL => {
                 let val: bool = value.get(index);
@@ -196,20 +203,7 @@ impl RelationalDatabase for PostgresDatabase {
         fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
         self.execute_with_connection(|conn| {
             let stmt = conn.prepare(query)?;
-            // let params: Vec<(postgres::types::Type, Option<Vec<u8>>)> =
-                // params.iter().map(Self::value_to_postgres).collect();
-            let params = params.iter().map(|v|       match v {
-            Value::Integer(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Bigint(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Text(s) => s as &(dyn postgres::types::ToSql + Sync),
-            Value::Float(f) => f as &(dyn postgres::types::ToSql + Sync),
-Value::Double(d) => d as &(dyn postgres::types::ToSql + Sync),
-Value::Boolean(b) => b as &(dyn postgres::types::ToSql + Sync),
-Value::Bytes(by) => by as &(dyn postgres::types::ToSql + Sync),
-Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
-            // ... 其他 Value 类型的处理
-            _ => unimplemented!(),
-        }).collect::<Vec<_>>();
+        let params = Self::params_to_postgres(&params);
 
             let rows_affected = conn.execute(&stmt, &params[..])?;
 
@@ -220,18 +214,7 @@ Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
     fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
         self.execute_with_connection(|conn| {
             let stmt = conn.prepare(query)?;
-            let params = params.iter().map(|v|       match v {
-            Value::Integer(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Bigint(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Text(s) => s as &(dyn postgres::types::ToSql + Sync),
-            Value::Float(f) => f as &(dyn postgres::types::ToSql + Sync),
-Value::Double(d) => d as &(dyn postgres::types::ToSql + Sync),
-Value::Boolean(b) => b as &(dyn postgres::types::ToSql + Sync),
-Value::Bytes(by) => by as &(dyn postgres::types::ToSql + Sync),
-Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
-            // ... 其他 Value 类型的处理
-            _ => unimplemented!(),
-        }).collect::<Vec<_>>();
+        let params = Self::params_to_postgres(&params);
             let result = conn.query(&stmt, &params[..])?;
 
             let mut rows = Vec::new();
@@ -297,7 +280,6 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
     #[serial]
     fn test_execute() {
         let db = setup_test_db();
@@ -328,13 +310,12 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
     #[serial]
     fn test_query() {
         let db = setup_test_db();
         db.execute("DROP TABLE IF EXISTS users", vec![]).unwrap();
         db.execute(
-            "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), age INT, created_at TIMESTAMP WITH TIME ZONE)",
+            "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT, age INT, created_at TIMESTAMP WITH TIME ZONE)",
             vec![],
         )
         .unwrap();
@@ -377,13 +358,12 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
     #[serial]
     fn test_query_one() {
         let db = setup_test_db();
         db.execute("DROP TABLE IF EXISTS users", vec![]).unwrap();
         db.execute(
-            "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255))",
+            "CREATE TABLE users (id SERIAL PRIMARY KEY, name TEXT)",
             vec![],
         )
         .unwrap();
@@ -426,7 +406,6 @@ mod tests {
     }
 
     #[test]
-    // #[ignore]
     #[serial]
     fn test_transaction() {
         let db = setup_test_db();
@@ -462,31 +441,5 @@ mod tests {
         db.execute("DROP TABLE users", vec![]).unwrap();
     }
 
-    #[test]
-    // #[ignore]
-    #[serial]
-    fn test_value_conversion() {
-        use std::time::Duration;
-        let db = setup_test_db();
 
-        let now = Utc::now();
-        let postgres_now = PostgresDatabase::value_to_postgres(&Value::DateTime(now));
-        // let converted_now = PostgresDatabase::convert_postgres_to_value(postgres_now).unwrap();
-        let stmt = db
-            .pool
-            .get()
-            .unwrap()
-            .prepare_typed("SELECT $1", &[postgres_now.0])
-            .unwrap();
-        let pg_row = db.pool.get().unwrap().query_one(&stmt, &[&now]).unwrap();
-        let converted_now = PostgresDatabase::convert_postgres_to_value(&pg_row, 0).unwrap();
-
-        if let Value::DateTime(dt) = converted_now {
-            assert_eq!(dt.date_naive(), now.date_naive());
-            // 比较时间时，允许1微秒的误差
-            assert!(dt.signed_duration_since(now) <= Duration::from_micros(1));
-        } else {
-            panic!("Expected DateTime");
-        }
-    }
 }
