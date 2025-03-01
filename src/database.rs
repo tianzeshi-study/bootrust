@@ -60,13 +60,19 @@ pub fn auto_config() -> mysql::MySqlDatabase {
 mysql::MySqlDatabase::connect(config).unwrap()
 }
 
+#[cfg(all(not(feature="full"), feature="postgresql"))]
+pub fn auto_config() -> postgres::PostgresDatabase {
+    let config = DatabaseConfig::default();
+postgres::PostgresDatabase::connect(config).unwrap()
+}
+
 #[cfg(all(not(feature="full"), feature="sqlite"))]
 pub fn auto_config() -> sqlite::SqliteDatabase {
     let config = DatabaseConfig::default();
 sqlite::SqliteDatabase::connect(config).unwrap()
 }
 // 定义关系型数据库通用接口
-pub trait RelationalDatabase {
+pub trait RelationalDatabase: Clone {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
     // 连接相关
     fn connect(config: DatabaseConfig) -> Result<Self, DbError>
@@ -105,7 +111,8 @@ pub enum DbError {
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
-    Integer(i32),
+    Integer(i64),
+    Int(i32),
     Bigint(i64),
     Float(f32),
     Double(f64),

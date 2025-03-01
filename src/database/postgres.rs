@@ -32,6 +32,7 @@ impl PostgresDatabase {
 
     fn params_to_postgres(params: &Vec<Value>) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
         params.iter().map(|v|       match v {
+            Value::Int(i) => i as &(dyn postgres::types::ToSql + Sync),
             Value::Integer(i) => i as &(dyn postgres::types::ToSql + Sync),
             Value::Bigint(i) => i as &(dyn postgres::types::ToSql + Sync),
             Value::Text(s) => s as &(dyn postgres::types::ToSql + Sync),
@@ -58,7 +59,7 @@ Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
             }
             postgres::types::Type::INT4 => {
                 let val: i32 = value.get(index);
-                Ok(Value::Integer(val))
+                Ok(Value::Int(val))
             }
             postgres::types::Type::FLOAT4 => {
                 let val: f32 = value.get(index);
@@ -293,7 +294,7 @@ mod tests {
         let affected_rows = db
             .execute(
                 "INSERT INTO users (name, age) VALUES ($1, $2)",
-                vec![Value::Text("Alice".to_string()), Value::Integer(30)],
+                vec![Value::Text("Alice".to_string()), Value::Int(30)],
             )
             .unwrap();
         assert_eq!(affected_rows, 1);
@@ -301,7 +302,7 @@ mod tests {
         let affected_rows = db
             .execute(
                 "UPDATE users SET age = $1 WHERE name = $2",
-                vec![Value::Integer(31), Value::Text("Alice".to_string())],
+                vec![Value::Int(31), Value::Text("Alice".to_string())],
             )
             .unwrap();
         assert_eq!(affected_rows, 1);
@@ -325,7 +326,7 @@ mod tests {
             "INSERT INTO users (name, age, created_at) VALUES ($1, $2, $3)",
             vec![
                 Value::Text("Alice".to_string()),
-                Value::Integer(30),
+                Value::Int(30),
                 Value::DateTime(now),
             ],
         )
@@ -337,9 +338,9 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].columns, vec!["id", "name", "age", "created_at"]);
         assert_eq!(rows[0].values.len(), 4);
-        assert!(matches!(rows[0].values[0], Value::Integer(_)));
+        assert!(matches!(rows[0].values[0], Value::Int(_)));
         assert!(matches!(rows[0].values[1], Value::Text(_)));
-        assert!(matches!(rows[0].values[2], Value::Integer(_)));
+        assert!(matches!(rows[0].values[2], Value::Int(_)));
         assert!(matches!(rows[0].values[3], Value::DateTime(_)));
 
         if let Value::Text(name) = &rows[0].values[1] {
@@ -348,7 +349,7 @@ mod tests {
             panic!("Expected name to be a string");
         }
 
-        if let Value::Integer(age) = &rows[0].values[2] {
+        if let Value::Int(age) = &rows[0].values[2] {
             assert_eq!(age, &30);
         } else {
             panic!("Expected age to be an integer");

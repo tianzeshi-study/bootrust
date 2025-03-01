@@ -45,6 +45,7 @@ impl MySqlDatabase {
                 dt.second() as u8,
                 dt.timestamp_subsec_micros(),
             ),
+            _ => unimplemented!(),
         }
     }
 

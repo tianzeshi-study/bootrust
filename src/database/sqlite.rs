@@ -30,6 +30,7 @@ impl SqliteDatabase {
             Value::Boolean(b) => Box::new(*b),
             Value::Bytes(b) => Box::new(b.to_vec()),
             Value::DateTime(dt) => Box::new(dt.to_rfc3339()),
+            _ => unimplemented!(),
         }
     }
 
