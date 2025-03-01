@@ -1,3 +1,5 @@
+#[cfg(feature = "postgresql")]
+pub mod  postgres;
 #[cfg(feature = "mysql")]
 pub mod mysql;
 #[cfg(feature = "sqlite")]
@@ -118,6 +120,7 @@ pub enum DbError {
 pub enum Value {
     Null,
     Integer(i64),
+    Bigint(i64),
     Float(f32),
     Double(f64),
     Text(String),
