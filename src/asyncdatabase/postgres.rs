@@ -1,12 +1,12 @@
+use crate::asyncdatabase::{DatabaseConfig, DbError, RelationalDatabase, Row, Value};
 use async_trait::async_trait;
-use tokio_postgres::{NoTls, Row as TokioRow};
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
-use crate::asyncdatabase::{DatabaseConfig, DbError, RelationalDatabase, Row, Value};
+use tokio_postgres::{NoTls, Row as TokioRow};
 
 #[derive(Debug, Clone)]
 pub struct PostgresDatabase {
-  pool: Pool<PostgresConnectionManager<NoTls>>,
+    pool: Pool<PostgresConnectionManager<NoTls>>,
 }
 
 impl From<tokio_postgres::Error> for DbError {
@@ -15,18 +15,21 @@ impl From<tokio_postgres::Error> for DbError {
     }
 }
 
-
-
 #[async_trait]
 impl RelationalDatabase for PostgresDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
-        keys.iter().enumerate().map(|(i, _)| format!("${}", i + 1)).collect()
+        keys.iter()
+            .enumerate()
+            .map(|(i, _)| format!("${}", i + 1))
+            .collect()
     }
 
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
         let manager = PostgresConnectionManager::new_from_stringlike(
-            format!("host={} port={} user={} password={} dbname={}",
-                    config.host, config.port, config.username, config.password, config.database_name),
+            format!(
+                "host={} port={} user={} password={} dbname={}",
+                config.host, config.port, config.username, config.password, config.database_name
+            ),
             NoTls,
         )?;
 
@@ -45,83 +48,140 @@ impl RelationalDatabase for PostgresDatabase {
     }
 
     async fn ping(&self) -> Result<(), DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        conn.simple_query("").await.map(|_| ()).map_err(|e| DbError::ConnectionError(e.to_string()))
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        conn.simple_query("")
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::ConnectionError(e.to_string()))
     }
 
     async fn begin_transaction(&self) -> Result<(), DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        conn.execute("BEGIN", &[]).await.map(|_| ()).map_err(|e| DbError::TransactionError(e.to_string()))
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        conn.execute("BEGIN", &[])
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::TransactionError(e.to_string()))
     }
 
     async fn commit(&self) -> Result<(), DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        conn.execute("COMMIT", &[]).await.map(|_| ()).map_err(|e| DbError::TransactionError(e.to_string()))
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        conn.execute("COMMIT", &[])
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::TransactionError(e.to_string()))
     }
 
     async fn rollback(&self) -> Result<(), DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        conn.execute("ROLLBACK", &[]).await.map(|_| ()).map_err(|e| DbError::TransactionError(e.to_string()))
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        conn.execute("ROLLBACK", &[])
+            .await
+            .map(|_| ())
+            .map_err(|e| DbError::TransactionError(e.to_string()))
     }
 
     async fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        let params = params.iter().map(|v|       match v {
-            Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
-            // ... 其他 Value 类型的处理
-            _ => unimplemented!(),
-        }).collect::<Vec<_>>();
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        let params = params
+            .iter()
+            .map(|v| match v {
+                Value::Int(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
+                // ... 其他 Value 类型的处理
+                _ => unimplemented!(),
+            })
+            .collect::<Vec<_>>();
 
-        conn.execute(query, &params[..]).await.map_err(|e| DbError::QueryError(e.to_string()))
+        conn.execute(query, &params[..])
+            .await
+            .map_err(|e| DbError::QueryError(e.to_string()))
     }
 
     async fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        let params = params.iter().map(|v| match v {
-            Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
-            // ... 其他 Value 类型的处理
-            _ => unimplemented!(),
-        }).collect::<Vec<_>>();
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        let params = params
+            .iter()
+            .map(|v| match v {
+                Value::Int(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
+                // ... 其他 Value 类型的处理
+                _ => unimplemented!(),
+            })
+            .collect::<Vec<_>>();
 
-        let rows = conn.query(query, &params[..]).await.map_err(|e| DbError::QueryError(e.to_string()))?;
+        let rows = conn
+            .query(query, &params[..])
+            .await
+            .map_err(|e| DbError::QueryError(e.to_string()))?;
         Ok(Self::convert_rows(rows))
-
     }
     async fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError> {
-        let conn = self.pool.get().await.map_err(|e| DbError::PoolError(e.to_string()))?;
-        let params = params.iter().map(|v| match v {
-            Value::Integer(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
-            Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
-Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
-            // ... 其他 Value 类型的处理
-            _ => unimplemented!(),
-        }).collect::<Vec<_>>();
+        let conn = self
+            .pool
+            .get()
+            .await
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        let params = params
+            .iter()
+            .map(|v| match v {
+                Value::Int(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Bigint(i) => i as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Text(s) => s as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Float(f) => f as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Double(d) => d as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
+                // ... 其他 Value 类型的处理
+                _ => unimplemented!(),
+            })
+            .collect::<Vec<_>>();
 
-        let row = conn.query_opt(query, &params[..]).await.map_err(|e| DbError::QueryError(e.to_string()))?;
-        Ok(row.map(|r| Self::convert_rows(vec![r])).and_then(|mut v| v.pop()))
-
+        let row = conn
+            .query_opt(query, &params[..])
+            .await
+            .map_err(|e| DbError::QueryError(e.to_string()))?;
+        Ok(row
+            .map(|r| Self::convert_rows(vec![r]))
+            .and_then(|mut v| v.pop()))
     }
 
-/*
+    /*
     async fn get_connection(&self) -> Result<crate::asyncdatabase::Connection, DbError> {
         // 在这里，你可以选择返回一个包装过的 bb8::PooledConnection，或者自定义的 Connection 类型
         // 但由于 bb8::PooledConnection 实现了 Deref<Target = tokio_postgres::Client>，
@@ -140,7 +200,7 @@ Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
 }
 
 impl PostgresDatabase {
-     fn convert_rows(rows: Vec<TokioRow>) -> Vec<Row> {
+    fn convert_rows(rows: Vec<TokioRow>) -> Vec<Row> {
         let mut result_rows = Vec::new();
         for row in rows {
             let mut columns = Vec::new();
@@ -152,39 +212,22 @@ impl PostgresDatabase {
                 let value = match column.type_() {
                     &tokio_postgres::types::Type::INT4 => {
                         // let num: i64 = row.get::<usize, i32>(i) as i64;
-                        // Value::Integer(num)
-                        Value::Integer(row.get(i))
-                    },
-                    &tokio_postgres::types::Type::INT8 => {
-                        Value::Bigint(row.get(i))
-                    },
-                    &tokio_postgres::types::Type::TEXT => {
-                        Value::Text(row.get(i))
-                    },
-                    &tokio_postgres::types::Type::VARCHAR => {
-                        Value::Text(row.get(i))
-                    },
-                    &tokio_postgres::types::Type::FLOAT4 => {
-                        Value::Float(row.get(i))
-                    },
-                    &tokio_postgres::types::Type::FLOAT8 => {
-                        Value::Double(row.get(i))
-                    },
-                                        &tokio_postgres::types::Type::BOOL => {
-                        Value::Boolean(row.get(i))
-                    },
-                    &tokio_postgres::types::Type::BYTEA => {
-                        Value::Bytes(row.get(i))
-                    },
+                        // Value::Int(num)
+                        Value::Int(row.get(i))
+                    }
+                    &tokio_postgres::types::Type::INT8 => Value::Bigint(row.get(i)),
+                    &tokio_postgres::types::Type::TEXT => Value::Text(row.get(i)),
+                    &tokio_postgres::types::Type::VARCHAR => Value::Text(row.get(i)),
+                    &tokio_postgres::types::Type::FLOAT4 => Value::Float(row.get(i)),
+                    &tokio_postgres::types::Type::FLOAT8 => Value::Double(row.get(i)),
+                    &tokio_postgres::types::Type::BOOL => Value::Boolean(row.get(i)),
+                    &tokio_postgres::types::Type::BYTEA => Value::Bytes(row.get(i)),
                     &tokio_postgres::types::Type::TIMESTAMPTZ => {
-    Value::DateTime(row.get(i)) // 对应 Rust 中的 chrono::DateTime<chrono::Utc>
-},
-
-
+                        Value::DateTime(row.get(i)) // 对应 Rust 中的 chrono::DateTime<chrono::Utc>
+                    }
 
                     // ... 其他类型的处理
                     _ => unimplemented!(),
-
                 };
                 values.push(value);
             }
@@ -193,8 +236,6 @@ impl PostgresDatabase {
         result_rows
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -211,9 +252,7 @@ mod tests {
             database_name: "test".to_string(),
             max_size: 10,
         };
-        PostgresDatabase::connect(config)
-        .await
-        .unwrap()
+        PostgresDatabase::connect(config).await.unwrap()
     }
 
     #[tokio::test]
@@ -227,7 +266,9 @@ mod tests {
     #[serial]
     async fn test_execute() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), age INT)",
             vec![],
@@ -238,7 +279,7 @@ mod tests {
         let affected_rows = db
             .execute(
                 "INSERT INTO users (name, age) VALUES ($1, $2)",
-                vec![Value::Text("Alice".to_string()), Value::Integer(30)],
+                vec![Value::Text("Alice".to_string()), Value::Int(30)],
             )
             .await
             .unwrap();
@@ -247,7 +288,7 @@ mod tests {
         let affected_rows = db
             .execute(
                 "UPDATE users SET age = $1 WHERE name = $2",
-                vec![Value::Integer(31), Value::Text("Alice".to_string())],
+                vec![Value::Int(31), Value::Text("Alice".to_string())],
             )
             .await
             .unwrap();
@@ -260,7 +301,9 @@ mod tests {
     #[serial]
     async fn test_query() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255), age INT8, created_at TIMESTAMP WITH TIME ZONE)",
             vec![],
@@ -287,7 +330,7 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].columns, vec!["id", "name", "age", "created_at"]);
         assert_eq!(rows[0].values.len(), 4);
-        assert!(matches!(rows[0].values[0], Value::Integer(_)));
+        assert!(matches!(rows[0].values[0], Value::Int(_)));
         assert!(matches!(rows[0].values[1], Value::Text(_)));
         assert!(matches!(rows[0].values[2], Value::Bigint(_)));
         assert!(matches!(rows[0].values[3], Value::DateTime(_)));
@@ -311,7 +354,9 @@ mod tests {
     #[serial]
     async fn test_query_one() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255))",
             vec![],
@@ -363,7 +408,9 @@ mod tests {
     #[serial]
     async fn test_transaction() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(255))",
             vec![],
@@ -390,9 +437,7 @@ mod tests {
         )
         .await
         .unwrap();
-        db.commit()
-        .await
-        .unwrap();
+        db.commit().await.unwrap();
 
         let rows = db.query("SELECT * FROM users", vec![]).await.unwrap();
         assert_eq!(rows.len(), 1);
@@ -406,10 +451,16 @@ mod tests {
         let db = setup_test_db().await;
 
         let now = Utc::now();
-        let row = db.query_one("SELECT $1::timestamp with time zone", vec![Value::DateTime(now)]).await.unwrap().unwrap();
+        let row = db
+            .query_one(
+                "SELECT $1::timestamp with time zone",
+                vec![Value::DateTime(now)],
+            )
+            .await
+            .unwrap()
+            .unwrap();
         if let Value::DateTime(dt) = &row.values[0] {
             assert!((dt.timestamp_micros() - now.timestamp_micros()).abs() <= 1);
-
         }
     }
 }

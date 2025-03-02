@@ -27,7 +27,7 @@ postgres = { version = "0.19.10", optional = true, features = ["with-chrono-0_4"
 [features]
 
 default = []
-full = ["mysql", "sqlite", "postgresql_async"]
+full = ["mysql", "sqlite", "postgresql", "postgresql_async"]
 mysql = ["dep:r2d2", "dep:mysql", "dep:r2d2_mysql"]
 postgresql = ["dep:r2d2", "dep:postgres", "dep:r2d2_postgres"]
 sqlite = ["dep:r2d2", "dep:rusqlite", "dep:r2d2_sqlite"]

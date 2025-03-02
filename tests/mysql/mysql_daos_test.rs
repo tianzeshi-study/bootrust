@@ -2,7 +2,7 @@ use bootrust::dao::Dao;
 use bootrust::database::{
     mysql::MySqlDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
-use chrono::{Utc};
+use chrono::Utc;
 use serial_test::serial;
 use std::marker::PhantomData;
 
@@ -37,7 +37,7 @@ struct Comment {
 }
 
 // UserDao实现
-struct UserDao<T:Sized> {
+struct UserDao<T: Sized> {
     database: MySqlDatabase,
     _table: PhantomData<T>,
 }
@@ -46,8 +46,8 @@ impl Dao<User> for UserDao<User> {
     type Database = MySqlDatabase;
 
     fn new(database: Self::Database) -> Self {
-        UserDao { 
-            database ,
+        UserDao {
+            database,
             _table: PhantomData,
         }
     }
@@ -95,10 +95,6 @@ impl Dao<User> for UserDao<User> {
             },
         })
     }
-
-
-
-
 
     fn entity_to_map(entity: &User) -> Vec<(String, Value)> {
         let mut map = Vec::new();
@@ -154,7 +150,11 @@ impl Dao<Order> for UserDao<Order> {
             },
             product_name: match &row.values[2] {
                 Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid product_name type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid product_name type".to_string(),
+                    ))
+                }
             },
             amount: match &row.values[3] {
                 Value::Float(f) => *f,
@@ -162,7 +162,11 @@ impl Dao<Order> for UserDao<Order> {
             },
             created_at: match &row.values[4] {
                 Value::Text(dt) => dt.clone(),
-                _ => return Err(DbError::ConversionError("Invalid created_at type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid created_at type".to_string(),
+                    ))
+                }
             },
         })
     }
@@ -171,9 +175,15 @@ impl Dao<Order> for UserDao<Order> {
         let mut map = Vec::new();
         map.push(("id".to_string(), Value::Bigint(entity.id)));
         map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
-        map.push(("product_name".to_string(), Value::Text(entity.product_name.clone())));
+        map.push((
+            "product_name".to_string(),
+            Value::Text(entity.product_name.clone()),
+        ));
         map.push(("amount".to_string(), Value::Float(entity.amount)));
-        map.push(("created_at".to_string(), Value::Text(entity.created_at.clone())));
+        map.push((
+            "created_at".to_string(),
+            Value::Text(entity.created_at.clone()),
+        ));
         map
     }
 
@@ -222,7 +232,11 @@ impl Dao<Comment> for UserDao<Comment> {
             },
             created_at: match &row.values[3] {
                 Value::Text(dt) => dt.clone(),
-                _ => return Err(DbError::ConversionError("Invalid created_at type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid created_at type".to_string(),
+                    ))
+                }
             },
         })
     }
@@ -232,7 +246,10 @@ impl Dao<Comment> for UserDao<Comment> {
         map.push(("id".to_string(), Value::Bigint(entity.id)));
         map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
         map.push(("content".to_string(), Value::Text(entity.content.clone())));
-        map.push(("created_at".to_string(), Value::Text(entity.created_at.clone())));
+        map.push((
+            "created_at".to_string(),
+            Value::Text(entity.created_at.clone()),
+        ));
         map
     }
 
@@ -269,7 +286,7 @@ fn setup_test_db() -> MySqlDatabase {
         vec![],
     )
     .unwrap();
-// 创建订单表
+    // 创建订单表
     db.execute("DROP TABLE IF EXISTS orders", vec![]).unwrap();
     db.execute(
         "CREATE TABLE orders (
@@ -424,9 +441,6 @@ fn test_delete_user() {
     let found = dao.find_by_id(Value::Bigint(1)).unwrap();
     assert!(found.is_none());
 }
-
-
-
 
 #[test]
 #[serial]

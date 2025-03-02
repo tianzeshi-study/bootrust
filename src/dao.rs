@@ -25,19 +25,17 @@ where
     /// 将实体对象转换为数据库值
     fn entity_to_values(&self, entity: &T) -> Vec<Value> {
         Self::entity_to_map(entity)
-        .into_iter()
-        .map(|kv| kv.1)
-        .collect()
+            .into_iter()
+            .map(|kv| kv.1)
+            .collect()
     }
 
-    fn entity_to_keys(&self, entity: &T) -> Vec<String> { 
+    fn entity_to_keys(&self, entity: &T) -> Vec<String> {
         Self::entity_to_map(entity)
-        .into_iter()
-        .map(|kv| kv.0)
-        .collect()
-            }
-
-    
+            .into_iter()
+            .map(|kv| kv.0)
+            .collect()
+    }
 
     /// 获取表名
     fn table_name() -> String;
@@ -67,10 +65,8 @@ where
 
     /// 根据ID查找记录
     fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
-
         let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
         let query = format!(
-
             "SELECT * FROM {} WHERE {} = {}",
             Self::table_name(),
             Self::primary_key_column(),
@@ -98,7 +94,6 @@ where
 
     /// 更新记录
     fn update(&self, entity: &T) -> Result<u64, DbError> {
-
         let map = Self::entity_to_map(entity);
         let mut values: Vec<Value> = Vec::new();
 
@@ -121,14 +116,11 @@ where
             })
             .collect();
 
-
         if let Some(id_value) = primary_value {
             values.push(id_value.clone());
         }
 
-
         let query = format!(
-
             "UPDATE {} SET {} WHERE {} = {}",
             Self::table_name(),
             update_columns.join(", "),
@@ -170,11 +162,11 @@ where
         self.database().begin_transaction()
     }
 
-    fn commit(&self) -> Result<(), DbError>{
+    fn commit(&self) -> Result<(), DbError> {
         self.database().commit()
     }
 
-    fn rollback(&self) -> Result<(), DbError>{
+    fn rollback(&self) -> Result<(), DbError> {
         self.database().rollback()
     }
 }

@@ -1,11 +1,7 @@
-use crate::database::{
-    Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
-};
+use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{
-    types::Type, ToSql,
-};
+use rusqlite::{types::Type, ToSql};
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -49,8 +45,6 @@ impl SqliteDatabase {
             )),
         }
     }
-
-
 
     fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where
@@ -232,7 +226,6 @@ impl RelationalDatabase for SqliteDatabase {
 mod tests {
     use super::*;
     use chrono::Utc;
-    
 
     fn setup_test_db() -> SqliteDatabase {
         // 使用内存数据库进行测试

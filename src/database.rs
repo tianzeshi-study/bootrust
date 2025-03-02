@@ -1,7 +1,7 @@
-#[cfg(feature = "postgresql")]
-pub mod  postgres;
 #[cfg(feature = "mysql")]
 pub mod mysql;
+#[cfg(feature = "postgresql")]
+pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 // 定义数据库连接配置
@@ -18,19 +18,21 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-        host: std::env::var("BOOTRUST_DB_HOST").unwrap_or_else(|_| "localhost".to_string()),
-        port: std::env::var("BOOTRUST_DB_PORT")
-        .unwrap_or_else(|_| "3306".to_string())
-        .parse::<u16>()
-        .expect("DB_PORT must be a number"),
-        username: std::env::var("BOOTRUST_DB_USERNAME").unwrap_or_else(|_| "root".to_string()),
-        password: std::env::var("BOOTRUST_DB_PASSWORD").unwrap_or_else(|_| "password".to_string()),
-        database_name: std::env::var("BOOTRUST_DB_DATABASE").unwrap_or_else(|_| "bootrust_default_db".to_string()),
-        max_size: std::env::var("DB_MAX_SIZE")
-        .unwrap_or_else(|_| "20".to_string())
-        .parse::<u32>()
-        .expect("DB_MAX_SIZE must be a number"),
-    }
+            host: std::env::var("BOOTRUST_DB_HOST").unwrap_or_else(|_| "localhost".to_string()),
+            port: std::env::var("BOOTRUST_DB_PORT")
+                .unwrap_or_else(|_| "3306".to_string())
+                .parse::<u16>()
+                .expect("DB_PORT must be a number"),
+            username: std::env::var("BOOTRUST_DB_USERNAME").unwrap_or_else(|_| "root".to_string()),
+            password: std::env::var("BOOTRUST_DB_PASSWORD")
+                .unwrap_or_else(|_| "password".to_string()),
+            database_name: std::env::var("BOOTRUST_DB_DATABASE")
+                .unwrap_or_else(|_| "bootrust_default_db".to_string()),
+            max_size: std::env::var("DB_MAX_SIZE")
+                .unwrap_or_else(|_| "20".to_string())
+                .parse::<u32>()
+                .expect("DB_MAX_SIZE must be a number"),
+        }
     }
 }
 
@@ -49,27 +51,27 @@ impl DatabaseType {
             "postgres" => Some(DatabaseType::Postgres),
             "mysql" => Some(DatabaseType::MySQL),
             "sqlite" => Some(DatabaseType::SQLite),
-            _ => None, 
+            _ => None,
         }
     }
 }
 
-#[cfg(all(not(feature="full"), feature="mysql"))]
+#[cfg(all(not(feature = "full"), feature = "mysql"))]
 pub fn auto_config() -> mysql::MySqlDatabase {
     let config = DatabaseConfig::default();
-mysql::MySqlDatabase::connect(config).unwrap()
+    mysql::MySqlDatabase::connect(config).unwrap()
 }
 
-#[cfg(all(not(feature="full"), feature="postgresql"))]
+#[cfg(all(not(feature = "full"), feature = "postgresql"))]
 pub fn auto_config() -> postgres::PostgresDatabase {
     let config = DatabaseConfig::default();
-postgres::PostgresDatabase::connect(config).unwrap()
+    postgres::PostgresDatabase::connect(config).unwrap()
 }
 
-#[cfg(all(not(feature="full"), feature="sqlite"))]
+#[cfg(all(not(feature = "full"), feature = "sqlite"))]
 pub fn auto_config() -> sqlite::SqliteDatabase {
     let config = DatabaseConfig::default();
-sqlite::SqliteDatabase::connect(config).unwrap()
+    sqlite::SqliteDatabase::connect(config).unwrap()
 }
 // 定义关系型数据库通用接口
 pub trait RelationalDatabase: Clone {
@@ -111,7 +113,6 @@ pub enum DbError {
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
-    Integer(i64),
     Int(i32),
     Bigint(i64),
     Float(f32),

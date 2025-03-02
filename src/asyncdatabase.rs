@@ -14,13 +14,13 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-        host: "localhost".to_string(),
-        port: 3306,
-        username: "root".to_string(),
-        password: "root".to_string(),
-        database_name: "DefaultDatabase".to_string(),
-        max_size: 16,
-    }
+            host: "localhost".to_string(),
+            port: 3306,
+            username: "root".to_string(),
+            password: "root".to_string(),
+            database_name: "DefaultDatabase".to_string(),
+            max_size: 16,
+        }
     }
 }
 
@@ -57,8 +57,6 @@ pub trait RelationalDatabase {
     // async fn release_connection(&self, conn: Connection) -> Result<(), DbError>;
 }
 
-
-
 // 定义通用的数据库错误类型
 #[derive(Debug)]
 pub enum DbError {
@@ -74,7 +72,7 @@ pub enum DbError {
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
-    Integer(i32),
+    Int(i32),
     Bigint(i64),
     Float(f32),
     Double(f64),

@@ -1,6 +1,4 @@
-use crate::database::{
-    Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
-};
+use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
 use chrono::{DateTime, Utc};
 use postgres::{config::Config as PostgresConfig, NoTls};
 use r2d2::{Pool, PooledConnection};
@@ -10,8 +8,7 @@ use std::sync::{Arc, Mutex};
 #[derive(Clone)]
 pub struct PostgresDatabase {
     pool: Arc<Pool<PostgresConnectionManager<NoTls>>>,
-    current_transaction:
-        Arc<Mutex<Option<PooledConnection<PostgresConnectionManager<NoTls>>>>>,
+    current_transaction: Arc<Mutex<Option<PooledConnection<PostgresConnectionManager<NoTls>>>>>,
 }
 
 impl PostgresDatabase {
@@ -31,19 +28,21 @@ impl PostgresDatabase {
     }
 
     fn params_to_postgres(params: &Vec<Value>) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
-        params.iter().map(|v|       match v {
-            Value::Int(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Integer(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Bigint(i) => i as &(dyn postgres::types::ToSql + Sync),
-            Value::Text(s) => s as &(dyn postgres::types::ToSql + Sync),
-            Value::Varchar(s) => s as &(dyn postgres::types::ToSql + Sync),
-            Value::Float(f) => f as &(dyn postgres::types::ToSql + Sync),
-Value::Double(d) => d as &(dyn postgres::types::ToSql + Sync),
-Value::Boolean(b) => b as &(dyn postgres::types::ToSql + Sync),
-Value::Bytes(by) => by as &(dyn postgres::types::ToSql + Sync),
-Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
-            _ => unimplemented!(),
-        }).collect::<Vec<_>>()
+        params
+            .iter()
+            .map(|v| match v {
+                Value::Int(i) => i as &(dyn postgres::types::ToSql + Sync),
+                Value::Bigint(i) => i as &(dyn postgres::types::ToSql + Sync),
+                Value::Text(s) => s as &(dyn postgres::types::ToSql + Sync),
+                Value::Varchar(s) => s as &(dyn postgres::types::ToSql + Sync),
+                Value::Float(f) => f as &(dyn postgres::types::ToSql + Sync),
+                Value::Double(d) => d as &(dyn postgres::types::ToSql + Sync),
+                Value::Boolean(b) => b as &(dyn postgres::types::ToSql + Sync),
+                Value::Bytes(by) => by as &(dyn postgres::types::ToSql + Sync),
+                Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
+                _ => unimplemented!(),
+            })
+            .collect::<Vec<_>>()
     }
 
     fn convert_postgres_to_value(
@@ -97,9 +96,7 @@ Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
 
     fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where
-        F: FnOnce(
-            &mut PooledConnection<PostgresConnectionManager<NoTls>>,
-        ) -> Result<T, DbError>,
+        F: FnOnce(&mut PooledConnection<PostgresConnectionManager<NoTls>>) -> Result<T, DbError>,
     {
         let mut transaction_guard = self
             .current_transaction
@@ -124,7 +121,6 @@ impl From<postgres::Error> for DbError {
         DbError::QueryError(err.to_string())
     }
 }
-
 
 impl RelationalDatabase for PostgresDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
@@ -201,10 +197,10 @@ impl RelationalDatabase for PostgresDatabase {
         Ok(())
     }
 
-        fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
+    fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
         self.execute_with_connection(|conn| {
             let stmt = conn.prepare(query)?;
-        let params = Self::params_to_postgres(&params);
+            let params = Self::params_to_postgres(&params);
 
             let rows_affected = conn.execute(&stmt, &params[..])?;
 
@@ -215,7 +211,7 @@ impl RelationalDatabase for PostgresDatabase {
     fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
         self.execute_with_connection(|conn| {
             let stmt = conn.prepare(query)?;
-        let params = Self::params_to_postgres(&params);
+            let params = Self::params_to_postgres(&params);
             let result = conn.query(&stmt, &params[..])?;
 
             let mut rows = Vec::new();
@@ -441,6 +437,4 @@ mod tests {
 
         db.execute("DROP TABLE users", vec![]).unwrap();
     }
-
-
 }

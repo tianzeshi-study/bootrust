@@ -2,9 +2,8 @@ use bootrust::dao::Dao;
 use bootrust::database::{
     sqlite::SqliteDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
-use chrono::{Utc};
+use chrono::Utc;
 use std::marker::PhantomData;
-
 
 // User实体
 #[derive(Debug, Clone, PartialEq)]
@@ -18,7 +17,7 @@ struct User {
 }
 
 // UserDao实现
-struct UserDao<T:Sized> {
+struct UserDao<T: Sized> {
     _marker: PhantomData<T>,
     database: SqliteDatabase,
 }
@@ -27,9 +26,9 @@ impl Dao<User> for UserDao<User> {
     type Database = SqliteDatabase;
 
     fn new(database: Self::Database) -> Self {
-        UserDao { 
+        UserDao {
             _marker: PhantomData,
-            database 
+            database,
         }
     }
 
@@ -77,7 +76,6 @@ impl Dao<User> for UserDao<User> {
         })
     }
 
-    
     fn entity_to_map(entity: &User) -> Vec<(String, Value)> {
         let mut map = Vec::new();
         map.push(("id".to_string(), Value::Bigint(entity.id)));
@@ -242,8 +240,6 @@ fn test_find_by_condition() {
     assert_eq!(users[0].username, "test_user");
 }
 
-
-
 #[derive(Debug, Clone, PartialEq)]
 struct VIPUser {
     id: i64,
@@ -256,16 +252,16 @@ struct VIPUser {
 
 // UserDao实现
 // struct UserDao {
-    // database: SqliteDatabase,
+// database: SqliteDatabase,
 // }
 
 impl Dao<VIPUser> for UserDao<VIPUser> {
     type Database = SqliteDatabase;
 
     fn new(database: Self::Database) -> Self {
-        UserDao { 
+        UserDao {
             _marker: PhantomData,
-            database 
+            database,
         }
     }
 
@@ -313,11 +309,13 @@ impl Dao<VIPUser> for UserDao<VIPUser> {
         })
     }
 
-    
     fn entity_to_map(entity: &VIPUser) -> Vec<(String, Value)> {
         let mut map = Vec::new();
         map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("vip_username".to_string(), Value::Text(entity.vip_username.clone())));
+        map.push((
+            "vip_username".to_string(),
+            Value::Text(entity.vip_username.clone()),
+        ));
         map.push(("email".to_string(), Value::Text(entity.email.clone())));
         map.push((
             "created_at".to_string(),
@@ -470,7 +468,10 @@ fn test_find_by_vip_condition() {
 
     // 按条件查询
     let vip_users = dao
-        .find_by_condition("vip_username = ?", vec![Value::Text("test_vip_user".to_string())])
+        .find_by_condition(
+            "vip_username = ?",
+            vec![Value::Text("test_vip_user".to_string())],
+        )
         .unwrap();
 
     assert_eq!(vip_users.len(), 1);
@@ -515,11 +516,7 @@ impl Dao<Order> for UserDao<Order> {
             },
             user_id: match &row.values[1] {
                 Value::Bigint(i) => *i,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid user_id type".to_string(),
-                    ))
-                }
+                _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
             },
             product_name: match &row.values[2] {
                 Value::Text(s) => s.clone(),
@@ -531,11 +528,7 @@ impl Dao<Order> for UserDao<Order> {
             },
             amount: match &row.values[3] {
                 Value::Double(f) => *f,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid amount type".to_string(),
-                    ))
-                }
+                _ => return Err(DbError::ConversionError("Invalid amount type".to_string())),
             },
             order_time: match &row.values[4] {
                 Value::Text(dt) => dt.clone(),

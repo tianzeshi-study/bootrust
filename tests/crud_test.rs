@@ -1,8 +1,8 @@
-#[cfg(feature="postgresql_async")]
-pub mod postgresql_async;
-#[cfg(feature="mysql")]
+#[cfg(feature = "mysql")]
 mod mysql;
-#[cfg(feature="postgresql")]
+#[cfg(feature = "postgresql")]
 mod postgresql;
-#[cfg(feature="sqlite")]
+#[cfg(feature = "postgresql_async")]
+pub mod postgresql_async;
+#[cfg(feature = "sqlite")]
 mod sqlite;

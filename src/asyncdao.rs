@@ -3,7 +3,7 @@ use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
 #[async_trait::async_trait]
 pub trait Dao<T>
 where
-    T: Sized+ Sync,
+    T: Sized + Sync,
 {
     /// 关联的数据库类型
     type Database: RelationalDatabase;
@@ -25,19 +25,17 @@ where
     /// 将实体对象转换为数据库值
     fn entity_to_values(&self, entity: &T) -> Vec<Value> {
         Self::entity_to_map(entity)
-        .into_iter()
-        .map(|kv| kv.1)
-        .collect()
+            .into_iter()
+            .map(|kv| kv.1)
+            .collect()
     }
 
-    fn entity_to_keys(&self, entity: &T) -> Vec<String> { 
+    fn entity_to_keys(&self, entity: &T) -> Vec<String> {
         Self::entity_to_map(entity)
-        .into_iter()
-        .map(|kv| kv.0)
-        .collect()
-            }
-
-    
+            .into_iter()
+            .map(|kv| kv.0)
+            .collect()
+    }
 
     /// 获取表名
     fn table_name() -> String;
@@ -62,10 +60,8 @@ where
 
     /// 根据ID查找记录
     async fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
-
         let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
         let query = format!(
-
             "SELECT * FROM {} WHERE {} = {}",
             Self::table_name(),
             Self::primary_key_column(),
@@ -93,7 +89,6 @@ where
 
     /// 更新记录
     async fn update(&self, entity: &T) -> Result<u64, DbError> {
-
         let map = Self::entity_to_map(entity);
         let mut values: Vec<Value> = Vec::new();
 
@@ -116,14 +111,11 @@ where
             })
             .collect();
 
-
         if let Some(id_value) = primary_value {
             values.push(id_value.clone());
         }
 
-
         let query = format!(
-
             "UPDATE {} SET {} WHERE {} = {}",
             Self::table_name(),
             update_columns.join(", "),
@@ -150,7 +142,11 @@ where
     }
 
     /// 自定义条件查询
-    async fn find_by_condition(&self, condition: &str, params: Vec<Value>) -> Result<Vec<T>, DbError> {
+    async fn find_by_condition(
+        &self,
+        condition: &str,
+        params: Vec<Value>,
+    ) -> Result<Vec<T>, DbError> {
         let query = format!("SELECT * FROM {} WHERE {}", Self::table_name(), condition);
 
         let rows = self.database().query(&query, params).await?;
@@ -162,14 +158,14 @@ where
     }
 
     async fn begin_transaction(&self) -> Result<(), DbError> {
-        self.database().begin_transaction().await 
+        self.database().begin_transaction().await
     }
 
-    async fn commit(&self) -> Result<(), DbError>{
+    async fn commit(&self) -> Result<(), DbError> {
         self.database().commit().await
     }
 
-    async fn rollback(&self) -> Result<(), DbError>{
+    async fn rollback(&self) -> Result<(), DbError> {
         self.database().rollback().await
     }
 }

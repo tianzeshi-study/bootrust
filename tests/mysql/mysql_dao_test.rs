@@ -2,7 +2,7 @@ use bootrust::dao::Dao;
 use bootrust::database::{
     mysql::MySqlDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
-use chrono::{Utc};
+use chrono::Utc;
 use serial_test::serial;
 use std::marker::PhantomData;
 
@@ -18,7 +18,7 @@ struct User {
 }
 
 // UserDao实现
-struct UserDao<T:Sized> {
+struct UserDao<T: Sized> {
     database: MySqlDatabase,
     _table: PhantomData<T>,
 }
@@ -27,8 +27,8 @@ impl Dao<User> for UserDao<User> {
     type Database = MySqlDatabase;
 
     fn new(database: Self::Database) -> Self {
-        UserDao { 
-            database ,
+        UserDao {
+            database,
             _table: PhantomData,
         }
     }
@@ -76,10 +76,6 @@ impl Dao<User> for UserDao<User> {
             },
         })
     }
-
-
-
-
 
     fn entity_to_map(entity: &User) -> Vec<(String, Value)> {
         let mut map = Vec::new();

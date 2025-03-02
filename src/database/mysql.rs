@@ -1,8 +1,6 @@
-use crate::database::{
-    Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
-};
+use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
 use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
-use mysql::{OptsBuilder};
+use mysql::OptsBuilder;
 use r2d2::{Pool, PooledConnection};
 use r2d2_mysql::mysql::{prelude::*, Value as MySqlValue};
 use r2d2_mysql::MySqlConnectionManager;
@@ -202,7 +200,7 @@ impl RelationalDatabase for MySqlDatabase {
                         values.push(Self::convert_mysql_to_value(value)?);
                     }
 
-                    Ok(Row {
+                    Ok::<Row, DbError>(Row {
                         columns: columns.iter().map(|c| c.name_str().to_string()).collect(),
                         values,
                     })

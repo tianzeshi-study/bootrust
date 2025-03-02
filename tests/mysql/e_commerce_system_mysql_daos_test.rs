@@ -72,11 +72,7 @@ impl Dao<Product> for ProductDao<Product> {
             },
             name: match &row.values[1] {
                 Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid name type".to_string(),
-                    ))
-                }
+                _ => return Err(DbError::ConversionError("Invalid name type".to_string())),
             },
             description: match &row.values[2] {
                 Value::Text(s) => s.clone(),
@@ -109,13 +105,13 @@ impl Dao<Product> for ProductDao<Product> {
         let mut map = Vec::new();
         map.push(("id".to_string(), Value::Bigint(entity.id)));
         map.push(("name".to_string(), Value::Text(entity.name.clone())));
-        map.push(("description".to_string(), Value::Text(entity.description.clone())));
+        map.push((
+            "description".to_string(),
+            Value::Text(entity.description.clone()),
+        ));
         map.push(("price".to_string(), Value::Double(entity.price)));
         map.push(("stock".to_string(), Value::Bigint(entity.stock)));
-        map.push((
-            "created_at".to_string(),
-            Value::DateTime(entity.created_at),
-        ));
+        map.push(("created_at".to_string(), Value::DateTime(entity.created_at)));
         map
     }
 
@@ -166,15 +162,27 @@ impl Dao<CartItem> for CartItemDao<CartItem> {
             },
             product_id: match &row.values[2] {
                 Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid product_id type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid product_id type".to_string(),
+                    ))
+                }
             },
             quantity: match &row.values[3] {
                 Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid quantity type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid quantity type".to_string(),
+                    ))
+                }
             },
             added_at: match &row.values[4] {
                 Value::DateTime(dt) => *dt,
-                _ => return Err(DbError::ConversionError("Invalid added_at type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid added_at type".to_string(),
+                    ))
+                }
             },
         })
     }
@@ -232,7 +240,11 @@ impl Dao<Payment> for PaymentDao<Payment> {
             },
             order_id: match &row.values[1] {
                 Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid order_id type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid order_id type".to_string(),
+                    ))
+                }
             },
             amount: match &row.values[2] {
                 Value::Double(f) => *f,
@@ -240,11 +252,19 @@ impl Dao<Payment> for PaymentDao<Payment> {
             },
             payment_method: match &row.values[3] {
                 Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid payment_method type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid payment_method type".to_string(),
+                    ))
+                }
             },
             transaction_id: match &row.values[4] {
                 Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid transaction_id type".to_string())),
+                _ => {
+                    return Err(DbError::ConversionError(
+                        "Invalid transaction_id type".to_string(),
+                    ))
+                }
             },
             paid_at: match &row.values[5] {
                 Value::DateTime(dt) => *dt,
@@ -307,7 +327,8 @@ fn setup_ecommerce_test_db() -> MySqlDatabase {
     .unwrap();
 
     // 创建购物车表
-    db.execute("DROP TABLE IF EXISTS cart_items", vec![]).unwrap();
+    db.execute("DROP TABLE IF EXISTS cart_items", vec![])
+        .unwrap();
     db.execute(
         "CREATE TABLE cart_items (
             id INTEGER PRIMARY KEY,
