@@ -1,5 +1,7 @@
 #[cfg(feature = "postgresql_async")]
 pub mod postgres;
+#[cfg(feature = "mysql_async")]
+pub mod mysql;
 
 #[derive(Clone)]
 pub struct DatabaseConfig {
@@ -14,12 +16,20 @@ pub struct DatabaseConfig {
 impl Default for DatabaseConfig {
     fn default() -> Self {
         Self {
-            host: "localhost".to_string(),
-            port: 3306,
-            username: "root".to_string(),
-            password: "root".to_string(),
-            database_name: "DefaultDatabase".to_string(),
-            max_size: 16,
+            host: std::env::var("BOOTRUST_DB_HOST").unwrap_or_else(|_| "localhost".to_string()),
+            port: std::env::var("BOOTRUST_DB_PORT")
+                .unwrap_or_else(|_| "3306".to_string())
+                .parse::<u16>()
+                .expect("DB_PORT must be a number"),
+            username: std::env::var("BOOTRUST_DB_USERNAME").unwrap_or_else(|_| "root".to_string()),
+            password: std::env::var("BOOTRUST_DB_PASSWORD")
+                .unwrap_or_else(|_| "password".to_string()),
+            database_name: std::env::var("BOOTRUST_DB_DATABASE")
+                .unwrap_or_else(|_| "bootrust_default_db".to_string()),
+            max_size: std::env::var("DB_MAX_SIZE")
+                .unwrap_or_else(|_| "20".to_string())
+                .parse::<u32>()
+                .expect("DB_MAX_SIZE must be a number"),
         }
     }
 }
@@ -33,7 +43,7 @@ pub enum DatabaseType {
 }
 
 #[async_trait::async_trait]
-pub trait RelationalDatabase {
+pub trait RelationalDatabase: Sync+Clone {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
     // 连接相关
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError>
@@ -55,6 +65,18 @@ pub trait RelationalDatabase {
     // 连接池相关
     // async fn get_connection(&self) -> Result<Connection, DbError>;
     // async fn release_connection(&self, conn: Connection) -> Result<(), DbError>;
+}
+
+#[cfg(all(not(feature = "full"), feature = "mysql_async"))]
+pub async fn auto_config() -> mysql::MySqlDatabase {
+    let config = DatabaseConfig::default();
+    mysql::MySqlDatabase::connect(config).await.unwrap()
+}
+
+#[cfg(all(not(feature = "full"), feature = "postgresql_async"))]
+pub async fn auto_config() -> postgres::PostgresDatabase {
+    let config = DatabaseConfig::default();
+    postgres::PostgresDatabase::connect(config).await.unwrap()
 }
 
 // 定义通用的数据库错误类型
