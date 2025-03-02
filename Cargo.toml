@@ -27,12 +27,13 @@ postgres = { version = "0.19.10", optional = true, features = ["with-chrono-0_4"
 [features]
 
 default = []
-full = ["mysql", "sqlite", "postgresql", "postgresql_async", "mysql_async"]
-mysql = ["dep:r2d2", "dep:mysql", "dep:r2d2_mysql"]
+full = ["mysql", "sqlite", "postgresql", "postgresql_async", "mysql_async", "sqlite_async"]
 postgresql = ["dep:r2d2", "dep:postgres", "dep:r2d2_postgres"]
+mysql = ["dep:r2d2", "dep:mysql", "dep:r2d2_mysql"]
 sqlite = ["dep:r2d2", "dep:rusqlite", "dep:r2d2_sqlite"]
 postgresql_async = ["dep:bb8-postgres", "dep:tokio-postgres", "dep:bb8"]
 mysql_async = ["dep:r2d2", "dep:mysql", "dep:r2d2_mysql"]
+sqlite_async = ["dep:r2d2", "dep:rusqlite", "dep:r2d2_sqlite"]
 
 [dev-dependencies]
 serial_test = "3.2.0"

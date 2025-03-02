@@ -1,4 +1,5 @@
-use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
+use crate::asyncdatabase::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
+use async_trait::async_trait;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{types::Type, ToSql};
@@ -11,7 +12,10 @@ pub struct SqliteDatabase {
 }
 
 impl SqliteDatabase {
-    fn new_pool(path: &str, max_size: u32) -> Result<Pool<SqliteConnectionManager>, r2d2::Error> {
+    async fn new_pool(
+        path: &str,
+        max_size: u32,
+    ) -> Result<Pool<SqliteConnectionManager>, r2d2::Error> {
         let manager = SqliteConnectionManager::file(path);
         Pool::builder().max_size(max_size).build(manager)
     }
@@ -46,7 +50,7 @@ impl SqliteDatabase {
         }
     }
 
-    fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
+    async fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where
         F: FnOnce(&PooledConnection<SqliteConnectionManager>) -> Result<T, DbError>,
     {
@@ -66,15 +70,28 @@ impl SqliteDatabase {
 
         f(conn)
     }
+    async fn get_connection(&self) -> Result<Connection, DbError> {
+        let _conn = self
+            .pool
+            .get()
+            .map_err(|e| DbError::PoolError(e.to_string()))?;
+        Ok(Connection {})
+    }
+
+    async fn release_connection(&self, _conn: Connection) -> Result<(), DbError> {
+        Ok(())
+    }
 }
 
+#[async_trait::async_trait]
 impl RelationalDatabase for SqliteDatabase {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
         let placeholders: Vec<String> = (1..=keys.len()).map(|i| format!("${}", i)).collect();
         placeholders
     }
-    fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
+    async fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
         let pool = Self::new_pool(&config.database_name, config.max_size)
+            .await
             .map_err(|e| DbError::ConnectionError(e.to_string()))?;
 
         Ok(SqliteDatabase {
@@ -83,11 +100,11 @@ impl RelationalDatabase for SqliteDatabase {
         })
     }
 
-    fn close(&self) -> Result<(), DbError> {
+    async fn close(&self) -> Result<(), DbError> {
         Ok(())
     }
 
-    fn ping(&self) -> Result<(), DbError> {
+    async fn ping(&self) -> Result<(), DbError> {
         let conn = self
             .pool
             .get()
@@ -97,7 +114,7 @@ impl RelationalDatabase for SqliteDatabase {
         Ok(())
     }
 
-    fn begin_transaction(&self) -> Result<(), DbError> {
+    async fn begin_transaction(&self) -> Result<(), DbError> {
         let conn = self
             .pool
             .get()
@@ -115,7 +132,7 @@ impl RelationalDatabase for SqliteDatabase {
         Ok(())
     }
 
-    fn commit(&self) -> Result<(), DbError> {
+    async fn commit(&self) -> Result<(), DbError> {
         let mut guard = self
             .current_transaction
             .lock()
@@ -128,7 +145,7 @@ impl RelationalDatabase for SqliteDatabase {
         Ok(())
     }
 
-    fn rollback(&self) -> Result<(), DbError> {
+    async fn rollback(&self) -> Result<(), DbError> {
         let mut guard = self
             .current_transaction
             .lock()
@@ -141,7 +158,7 @@ impl RelationalDatabase for SqliteDatabase {
         Ok(())
     }
 
-    fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
+    async fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
         self.execute_with_connection(|conn| {
             let params: Vec<Box<dyn ToSql>> =
                 params.iter().map(SqliteDatabase::value_to_sql).collect();
@@ -150,9 +167,10 @@ impl RelationalDatabase for SqliteDatabase {
                 .map(|rows| rows as u64)
                 .map_err(|e| DbError::QueryError(e.to_string()))
         })
+        .await
     }
 
-    fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
+    async fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
         self.execute_with_connection(|conn| {
             let mut stmt = conn
                 .prepare(query)
@@ -202,23 +220,12 @@ impl RelationalDatabase for SqliteDatabase {
             }
             Ok(results)
         })
+        .await
     }
 
-    fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError> {
-        let mut rows = self.query(query, params)?;
+    async fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError> {
+        let mut rows = self.query(query, params).await?;
         Ok(rows.pop())
-    }
-
-    fn get_connection(&self) -> Result<Connection, DbError> {
-        let _conn = self
-            .pool
-            .get()
-            .map_err(|e| DbError::PoolError(e.to_string()))?;
-        Ok(Connection {})
-    }
-
-    fn release_connection(&self, _conn: Connection) -> Result<(), DbError> {
-        Ok(())
     }
 }
 
@@ -227,59 +234,63 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    fn setup_test_db() -> SqliteDatabase {
+    async fn setup_test_db() -> SqliteDatabase {
         // 使用内存数据库进行测试
         let config = DatabaseConfig {
             database_name: ":memory:".to_string(),
             ..Default::default()
         };
-        SqliteDatabase::connect(config).unwrap()
+        SqliteDatabase::connect(config).await.unwrap()
     }
 
-    #[test]
-    fn test_basic_connection() {
-        let db = setup_test_db();
-        dbg!(&db.ping());
-        assert!(db.ping().is_ok());
+    #[tokio::test]
+    async fn test_basic_connection() {
+        let db = setup_test_db().await;
+
+        assert!(db.ping().await.is_ok());
     }
 
-    #[test]
-    fn test_execute_query() {
-        let db = setup_test_db();
+    #[tokio::test]
+    async fn test_execute_query() {
+        let db = setup_test_db().await;
 
         // 创建测试表
         let create_table = "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)";
-        assert!(db.execute(create_table, vec![]).is_ok());
+        assert!(db.execute(create_table, vec![]).await.is_ok());
 
         // 插入数据
         let insert = "INSERT INTO test (name, age) VALUES ($1, $2)";
-        let result = db.execute(
-            insert,
-            vec![Value::Text("Alice".to_string()), Value::Bigint(25)],
-        );
+        let result = db
+            .execute(
+                insert,
+                vec![Value::Text("Alice".to_string()), Value::Bigint(25)],
+            )
+            .await;
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), 1);
     }
 
-    #[test]
-    fn test_query() {
-        let db = setup_test_db();
+    #[tokio::test]
+    async fn test_query() {
+        let db = setup_test_db().await;
 
         // 创建并填充测试表
         db.execute(
             "CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT, age INTEGER)",
             vec![],
         )
+        .await
         .unwrap();
 
         db.execute(
             "INSERT INTO test (name, age) VALUES ($1, $2)",
             vec![Value::Text("Bob".to_string()), Value::Bigint(30)],
         )
+        .await
         .unwrap();
 
         // 测试查询
-        let rows = db.query("SELECT * FROM test", vec![]).unwrap();
+        let rows = db.query("SELECT * FROM test", vec![]).await.unwrap();
         assert_eq!(rows.len(), 1);
 
         let row = &rows[0];
@@ -297,46 +308,49 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_transaction() {
-        let db = setup_test_db();
+    #[tokio::test]
+    async fn test_transaction() {
+        let db = setup_test_db().await;
 
         // 设置测试表
         db.execute(
             "CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)",
             vec![],
         )
+        .await
         .unwrap();
-        dbg!(&db.query("SELECT * FROM test", vec![]).unwrap());
+        &db.query("SELECT * FROM test", vec![]).await.unwrap();
 
         // 测试成功的事务
-        db.begin_transaction().unwrap();
+        db.begin_transaction().await.unwrap();
         db.execute(
             "INSERT INTO test (value) VALUES ($1)",
             vec![Value::Text("transaction_test".to_string())],
         )
+        .await
         .unwrap();
-        db.commit().unwrap();
+        db.commit().await.unwrap();
 
-        let rows = db.query("SELECT * FROM test", vec![]).unwrap();
+        let rows = db.query("SELECT * FROM test", vec![]).await.unwrap();
         assert_eq!(rows.len(), 1);
 
         // 测试回滚
-        db.begin_transaction().unwrap();
+        db.begin_transaction().await.unwrap();
         db.execute(
             "INSERT INTO test (value) VALUES ($1)",
             vec![Value::Text("will_rollback".to_string())],
         )
+        .await
         .unwrap();
-        db.rollback().unwrap();
+        db.rollback().await.unwrap();
 
-        let rows = db.query("SELECT * FROM test", vec![]).unwrap();
+        let rows = db.query("SELECT * FROM test", vec![]).await.unwrap();
         assert_eq!(rows.len(), 1); // 应该还是1条记录
     }
 
-    #[test]
-    fn test_value_conversions() {
-        let db = setup_test_db();
+    #[tokio::test]
+    async fn test_value_conversions() {
+        let db = setup_test_db().await;
 
         db.execute(
             "CREATE TABLE test_types (
@@ -349,6 +363,7 @@ mod tests {
             )",
             vec![],
         )
+        .await
         .unwrap();
 
         let now = Utc::now();
@@ -364,9 +379,10 @@ mod tests {
                 Value::DateTime(now),
             ],
         )
+        .await
         .unwrap();
 
-        let rows = db.query("SELECT * FROM test_types", vec![]).unwrap();
+        let rows = db.query("SELECT * FROM test_types", vec![]).await.unwrap();
         assert_eq!(rows.len(), 1);
 
         let row = &rows[0];

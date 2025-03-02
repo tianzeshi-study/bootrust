@@ -14,7 +14,9 @@ pub struct MySqlDatabase {
 }
 
 impl MySqlDatabase {
-    async fn new_pool(config: &DatabaseConfig) -> Result<Pool<MySqlConnectionManager>, r2d2::Error> {
+    async fn new_pool(
+        config: &DatabaseConfig,
+    ) -> Result<Pool<MySqlConnectionManager>, r2d2::Error> {
         let opts = OptsBuilder::new()
             .ip_or_hostname(Some(&config.host))
             .tcp_port(config.port)
@@ -79,7 +81,6 @@ impl MySqlDatabase {
 
     async fn execute_with_connection<F, T>(&self, f: F) -> Result<T, DbError>
     where
-        // F: FnOnce(&mut PooledConnection<MySqlConnectionManager>) -> Result<T, DbError>
         F: FnOnce(&mut PooledConnection<MySqlConnectionManager>) -> Result<T, DbError>,
     {
         let mut transaction_guard = self
@@ -99,9 +100,8 @@ impl MySqlDatabase {
         // f(conn)
         f(&mut conn)
     }
-    
-    
-        async fn get_connection(&self) -> Result<Connection, DbError> {
+
+    async fn get_connection(&self) -> Result<Connection, DbError> {
         let _conn = self
             .pool
             .get()
@@ -121,8 +121,8 @@ impl RelationalDatabase for MySqlDatabase {
     }
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError> {
         let pool = Self::new_pool(&config)
-        .await
-        .map_err(|e| DbError::ConnectionError(e.to_string()))?;
+            .await
+            .map_err(|e| DbError::ConnectionError(e.to_string()))?;
 
         Ok(MySqlDatabase {
             pool: Arc::new(pool),
@@ -207,7 +207,7 @@ impl RelationalDatabase for MySqlDatabase {
                 params.iter().map(MySqlDatabase::value_to_mysql).collect();
 
             let result = conn
-                .exec_map(query, params, |row: mysql::Row|  {
+                .exec_map(query, params, |row: mysql::Row| {
                     let mut values = Vec::new();
                     let columns = row.columns();
 
@@ -238,7 +238,6 @@ impl RelationalDatabase for MySqlDatabase {
         let mut rows = self.query(query, params).await?;
         Ok(rows.pop())
     }
-
 }
 
 #[cfg(test)]
@@ -270,7 +269,9 @@ mod tests {
     #[serial]
     async fn test_execute() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT)",
             vec![],
@@ -303,7 +304,9 @@ mod tests {
     #[serial]
     async fn test_query() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), age INT, created_at DATETIME)",
             vec![],
@@ -354,7 +357,9 @@ mod tests {
     #[serial]
     async fn test_query_one() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))",
             vec![],
@@ -406,7 +411,9 @@ mod tests {
     #[serial]
     async fn test_transaction() {
         let db = setup_test_db().await;
-        db.execute("DROP TABLE IF EXISTS users", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS users", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255))",
             vec![],

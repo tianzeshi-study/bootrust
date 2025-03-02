@@ -1,7 +1,9 @@
-#[cfg(feature = "postgresql_async")]
-pub mod postgres;
 #[cfg(feature = "mysql_async")]
 pub mod mysql;
+#[cfg(feature = "postgresql_async")]
+pub mod postgres;
+#[cfg(feature = "sqlite_async")]
+pub mod sqlite;
 
 #[derive(Clone)]
 pub struct DatabaseConfig {
@@ -43,7 +45,7 @@ pub enum DatabaseType {
 }
 
 #[async_trait::async_trait]
-pub trait RelationalDatabase: Sync+Clone {
+pub trait RelationalDatabase: Sync + Clone {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
     // 连接相关
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError>
@@ -67,16 +69,22 @@ pub trait RelationalDatabase: Sync+Clone {
     // async fn release_connection(&self, conn: Connection) -> Result<(), DbError>;
 }
 
+#[cfg(all(not(feature = "full"), feature = "postgresql_async"))]
+pub async fn auto_config() -> postgres::PostgresDatabase {
+    let config = DatabaseConfig::default();
+    postgres::PostgresDatabase::connect(config).await.unwrap()
+}
+
 #[cfg(all(not(feature = "full"), feature = "mysql_async"))]
 pub async fn auto_config() -> mysql::MySqlDatabase {
     let config = DatabaseConfig::default();
     mysql::MySqlDatabase::connect(config).await.unwrap()
 }
 
-#[cfg(all(not(feature = "full"), feature = "postgresql_async"))]
-pub async fn auto_config() -> postgres::PostgresDatabase {
+#[cfg(all(not(feature = "full"), feature = "sqlite_async"))]
+pub async fn auto_config() -> sqlite::SqliteDatabase {
     let config = DatabaseConfig::default();
-    postgres::PostgresDatabase::connect(config).await.unwrap()
+    sqlite::SqliteDatabase::connect(config).await.unwrap()
 }
 
 // 定义通用的数据库错误类型
