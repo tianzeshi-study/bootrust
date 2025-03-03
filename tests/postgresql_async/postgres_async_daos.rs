@@ -1,3 +1,4 @@
+use serde::Serialize;
 use bootrust::asyncdao::Dao;
 use bootrust::asyncdatabase::{
     postgres::PostgresDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
@@ -7,34 +8,37 @@ use serial_test::serial;
 use std::marker::PhantomData;
 
 // 商品实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 struct Product {
     id: i64,
     name: String,
     description: String,
     price: f64,
     stock: i64,
+    #[serde(with = "chrono::serde::ts_seconds")]
     created_at: DateTime<Utc>,
 }
 
 // 购物车实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 struct CartItem {
     id: i64,
     user_id: i64,
     product_id: i64,
     quantity: i64,
+    #[serde(with = "chrono::serde::ts_seconds")]
     added_at: DateTime<Utc>,
 }
 
 // 支付信息实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 struct Payment {
     id: i64,
     order_id: i64,
     amount: f64,
     payment_method: String,
     transaction_id: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
     paid_at: DateTime<Utc>,
 }
 

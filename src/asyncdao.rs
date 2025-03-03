@@ -1,9 +1,13 @@
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
+use  crate::entity_converter::EntityConvertor;
+use std::marker::PhantomData;
+use std::io::Cursor;
 
 #[async_trait::async_trait]
 pub trait Dao<T>
 where
-    T: Sized + Sync,
+    T: Sized + Sync+ Serialize,
 {
     /// 关联的数据库类型
     type Database: RelationalDatabase;
@@ -20,7 +24,15 @@ where
 
     fn row_to_entity(row: Row) -> Result<T, DbError>;
 
-    fn entity_to_map(entity: &T) -> Vec<(String, Value)>;
+    fn entity_to_map(entity: &T) -> Vec<(String, Value)>{
+        let cursor = Cursor::new(Vec::new());
+let mut convertor = EntityConvertor::new(cursor);
+let result = entity.serialize(&mut convertor);
+match result {
+    Ok(Value::Table(table)) =>table,
+_ =>vec![("".to_string(), Value::Null)],
+}
+    }
 
     /// 将实体对象转换为数据库值
     fn entity_to_values(&self, entity: &T) -> Vec<Value> {
@@ -95,11 +107,10 @@ where
         let mut primary_value = None;
         let update_columns: Vec<String> = map
             .iter()
-            .map(|kv| {
+            .inspect(|kv| {
                 if kv.0 == Self::primary_key_column() {
                     primary_value = Some(kv.1.clone());
                 }
-                kv
             })
             .filter(|kv| kv.0 != Self::primary_key_column())
             .enumerate()
@@ -169,3 +180,45 @@ where
         self.database().rollback().await
     }
 }
+
+pub struct DataAccessory<T: Sized, D:RelationalDatabase> {
+    database : D,
+    _table: PhantomData<T>,
+}
+impl<T, D> Dao<T> for DataAccessory<T, D>
+where 
+T : Sized+Sync+Serialize,
+D: RelationalDatabase,
+{
+  type Database = D;
+fn database(&self) -> &Self::Database{
+    &self.database
+}
+
+fn new(database: Self::Database) -> Self {
+    Self { 
+            database ,
+            _table: PhantomData,
+        }
+}
+
+fn row_to_entity(row: Row) -> Result<T, DbError>{
+    Err(DbError::ConversionError("error".to_string()))
+}
+fn entity_to_map(entity: &T) -> Vec<(String, Value)>{
+    // vec![("null".to_string(), Value::Null)]
+    let cursor = Cursor::new(Vec::new());
+let mut convertor = EntityConvertor::new(cursor);
+let result = entity.serialize(&mut convertor);
+match result {
+    Ok(Value::Table(table)) =>table,
+_ =>vec![("".to_string(), Value::Null)],
+}
+}
+fn table_name() -> String {
+    "user".to_string()
+}
+fn primary_key_column() -> String{
+    "id".to_string()
+}  
+} 

@@ -102,6 +102,7 @@ pub enum DbError {
 #[derive(Debug, Clone)]
 pub enum Value {
     Null,
+    Table(Vec<(String, Value)>),
     Int(i32),
     Bigint(i64),
     Float(f32),

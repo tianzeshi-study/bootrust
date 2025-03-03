@@ -100,11 +100,10 @@ where
         let mut primary_value = None;
         let update_columns: Vec<String> = map
             .iter()
-            .map(|kv| {
+            .inspect(|kv| {
                 if kv.0 == Self::primary_key_column() {
                     primary_value = Some(kv.1.clone());
                 }
-                kv
             })
             .filter(|kv| kv.0 != Self::primary_key_column())
             .enumerate()
