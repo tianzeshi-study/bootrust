@@ -116,6 +116,7 @@ impl PostgresDatabase {
     }
 }
 
+#[cfg(all(not(feature = "full"), feature = "postgresql"))]
 impl From<postgres::Error> for DbError {
     fn from(err: postgres::Error) -> DbError {
         DbError::QueryError(err.to_string())

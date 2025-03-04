@@ -1,6 +1,6 @@
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
-use crate::entity_converter::EntityConvertor;
-use serde::ser::{Serialize, SerializeStruct, Serializer};
+use crate::autoserde::EntityConvertor;
+use serde::ser::Serialize;
 use std::io::Cursor;
 use std::marker::PhantomData;
 
