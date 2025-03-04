@@ -1,11 +1,13 @@
-use serde::ser::{Serialize,  Serializer,Impossible, SerializeStruct, SerializeSeq, SerializeTuple, SerializeMap};
+use crate::database::DbError;
 use serde::de::DeserializeOwned;
 use serde::ser::Error;
-use crate::database::DbError;
+use serde::ser::{
+    Impossible, Serialize, SerializeMap, SerializeSeq, SerializeStruct, SerializeTuple, Serializer,
+};
 // use std::error::Error;
+use crate::asyncdatabase::Value;
 use std::fmt::Display;
 use std::io;
-use crate::asyncdatabase::Value;
 // 定义 Value 枚举，表示不同的数据类型
 #[derive(Debug)]
 pub enum Value1 {
@@ -24,7 +26,7 @@ pub enum Value1 {
 
 // 实体转换器结构体
 pub struct EntityConvertor<W> {
-    writer: W,                        // 写入器
+    writer: W,                    // 写入器
     fields: Vec<(String, Value)>, // 字段集合
 }
 
@@ -89,12 +91,12 @@ where
 
     // 序列化 i32 值
     fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-Ok(Value::Int(v))
+        Ok(Value::Int(v))
     }
 
     // 序列化 i64 值
     fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-Ok(Value::Bigint(v))
+        Ok(Value::Bigint(v))
     }
 
     // 序列化 i128 值
@@ -133,31 +135,25 @@ Ok(Value::Bigint(v))
         Ok(Value::Float(v))
     }
 
-
     fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
         Ok(Value::Double(v))
     }
-
 
     fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
-
     fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
         Ok(Value::Text(v.to_string()))
     }
-
 
     fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
         Ok(Value::Bytes(v.to_vec()))
     }
 
-
     fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
         Ok(Value::Null)
     }
-
 
     fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
     where
@@ -165,7 +161,6 @@ Ok(Value::Bigint(v))
     {
         unimplemented!()
     }
-
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
@@ -453,7 +448,7 @@ pub trait SerializeStructVariant {
 // 用于辅助序列化结构体的结构体
 pub struct EntitySerializeStruct<'a, W: 'a> {
     entity_convertor: &'a mut EntityConvertor<W>, // 实体转换器的可变引用
-    fields: Vec<(String, Value)>,               // 字段集合
+    fields: Vec<(String, Value)>,                 // 字段集合
 }
 
 // 为 EntitySerializeStruct 实现 SerializeStruct trait
@@ -467,11 +462,7 @@ where
     type Error = serde::de::value::Error;
 
     // 序列化字段
-    fn serialize_field<T>(
-        &mut self,
-        key: &'static str,
-        value: &T,
-    ) -> Result<(), Self::Error>
+    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
     {
@@ -503,11 +494,15 @@ where
     fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
-    {unimplemented!()}
-fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    {
+        unimplemented!()
+    }
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
-    {unimplemented!()}
+    {
+        unimplemented!()
+    }
     // 结束序列化
     fn end(self) -> Result<Self::Ok, Self::Error> {
         // 将字段组合成一个单一的 Value::Struct 或类似的类型
@@ -515,7 +510,6 @@ fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
         Ok(Value::Null) // 占位符，替换为实际逻辑
     }
 }
-
 
 // 为 Value 实现 Serialize trait，以便进行递归序列化
 impl Serialize for Value {
@@ -533,11 +527,11 @@ impl Serialize for Value {
             Value::Boolean(b) => serializer.serialize_bool(b),
             Value::Bytes(ref b) => serializer.serialize_bytes(b),
             // Value::DateTime(ref dt) => serializer.collect_str(dt), // 需要 Display trait
+            Value::DateTime(ref dt) => serializer.serialize_str(&dt.to_rfc3339()), // 使用 to_rfc3339 格式化
             _ => unimplemented!(),
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

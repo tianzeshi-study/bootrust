@@ -1,9 +1,9 @@
-use serde::Serialize;
 use bootrust::asyncdao::Dao;
 use bootrust::asyncdatabase::{
     postgres::PostgresDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
 use chrono::{DateTime, Utc};
+use serde::Serialize;
 use serial_test::serial;
 use std::marker::PhantomData;
 

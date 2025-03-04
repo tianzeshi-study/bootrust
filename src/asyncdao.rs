@@ -1,13 +1,13 @@
-use serde::ser::{Serialize, SerializeStruct, Serializer};
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
-use  crate::entity_converter::EntityConvertor;
-use std::marker::PhantomData;
+use crate::entity_converter::EntityConvertor;
+use serde::ser::{Serialize, SerializeStruct, Serializer};
 use std::io::Cursor;
+use std::marker::PhantomData;
 
 #[async_trait::async_trait]
-pub trait Dao<T>
+pub trait Dao<T>: Sized
 where
-    T: Sized + Sync+ Serialize,
+    T: Sized + Sync + Serialize,
 {
     /// 关联的数据库类型
     type Database: RelationalDatabase;
@@ -24,14 +24,14 @@ where
 
     fn row_to_entity(row: Row) -> Result<T, DbError>;
 
-    fn entity_to_map(entity: &T) -> Vec<(String, Value)>{
+    fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
         let cursor = Cursor::new(Vec::new());
-let mut convertor = EntityConvertor::new(cursor);
-let result = entity.serialize(&mut convertor);
-match result {
-    Ok(Value::Table(table)) =>table,
-_ =>vec![("".to_string(), Value::Null)],
-}
+        let mut convertor = EntityConvertor::new(cursor);
+        let result = entity.serialize(&mut convertor);
+        match result {
+            Ok(Value::Table(table)) => table,
+            _ => vec![("".to_string(), Value::Null)],
+        }
     }
 
     /// 将实体对象转换为数据库值
@@ -51,6 +51,10 @@ _ =>vec![("".to_string(), Value::Null)],
 
     /// 获取表名
     fn table_name() -> String;
+
+    fn table(&self) -> String {
+        Self::table_name()
+    }
 
     /// 获取主键列名
     fn primary_key_column() -> String;
@@ -179,46 +183,278 @@ _ =>vec![("".to_string(), Value::Null)],
     async fn rollback(&self) -> Result<(), DbError> {
         self.database().rollback().await
     }
+
+    fn prepare(&self) -> SqlExecutor<Self, T> {
+        SqlExecutor::new(&self)
+    }
 }
 
-pub struct DataAccessory<T: Sized, D:RelationalDatabase> {
-    database : D,
+pub struct DataAccessory<T: Sized, D: RelationalDatabase> {
+    database: D,
     _table: PhantomData<T>,
 }
 impl<T, D> Dao<T> for DataAccessory<T, D>
-where 
-T : Sized+Sync+Serialize,
-D: RelationalDatabase,
+where
+    T: Sized + Sync + Serialize,
+    D: RelationalDatabase,
 {
-  type Database = D;
-fn database(&self) -> &Self::Database{
-    &self.database
-}
+    type Database = D;
+    fn database(&self) -> &Self::Database {
+        &self.database
+    }
 
-fn new(database: Self::Database) -> Self {
-    Self { 
-            database ,
+    fn new(database: Self::Database) -> Self {
+        Self {
+            database,
             _table: PhantomData,
         }
+    }
+
+    fn row_to_entity(row: Row) -> Result<T, DbError> {
+        Err(DbError::ConversionError("error".to_string()))
+    }
+    fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
+        // vec![("null".to_string(), Value::Null)]
+        let cursor = Cursor::new(Vec::new());
+        let mut convertor = EntityConvertor::new(cursor);
+        let result = entity.serialize(&mut convertor);
+        match result {
+            Ok(Value::Table(table)) => table,
+            _ => vec![("".to_string(), Value::Null)],
+        }
+    }
+    fn table_name() -> String {
+        "user".to_string()
+    }
+    fn primary_key_column() -> String {
+        "id".to_string()
+    }
 }
 
-fn row_to_entity(row: Row) -> Result<T, DbError>{
-    Err(DbError::ConversionError("error".to_string()))
+struct SqlExecutor<'a, D, T>
+where
+    D: Dao<T>,
+    T: Sized + Sync + Serialize,
+{
+    dao: &'a D,
+    _table: PhantomData<T>,
+    query_type: Option<String>,
+    table: Option<String>,
+    columns: Vec<String>,
+    set_clauses: Vec<String>,
+    values: Vec<String>,
+    where_clauses: Vec<String>,
+    order_by: Vec<String>,
+    group_by: Vec<String>,
+    having: Vec<String>,
+    joins: Vec<String>,
+    limit: Option<u32>,
+    offset: Option<u32>,
 }
-fn entity_to_map(entity: &T) -> Vec<(String, Value)>{
-    // vec![("null".to_string(), Value::Null)]
-    let cursor = Cursor::new(Vec::new());
-let mut convertor = EntityConvertor::new(cursor);
-let result = entity.serialize(&mut convertor);
-match result {
-    Ok(Value::Table(table)) =>table,
-_ =>vec![("".to_string(), Value::Null)],
+
+impl<'a, D, T> SqlExecutor<'a, D, T>
+where
+    D: Dao<T>,
+    T: Sized + Sync + Serialize,
+{
+    /// 创建一个新的 SQL 生成器
+    pub fn new(dao: &'a D) -> Self {
+        Self {
+            dao: dao,
+            _table: PhantomData,
+            query_type: None,
+            table: Some(dao.table()),
+            columns: vec![],
+            set_clauses: vec![],
+            values: vec![],
+            where_clauses: vec![],
+            order_by: vec![],
+            group_by: vec![],
+            having: vec![],
+            joins: vec![],
+            limit: None,
+            offset: None,
+        }
+    }
+    pub fn find(mut self) -> Self {
+        self.query_type = Some("SELECT".to_string());
+        self.columns = vec!["*".to_string()];
+        self
+    }
+    /// 选择表和列
+    pub fn select(mut self, columns: &[&str]) -> Self {
+        self.query_type = Some("SELECT".to_string());
+        self.columns = columns.iter().map(|s| s.to_string()).collect();
+        self
+    }
+
+    /// 选择要操作的表
+    pub fn from(mut self, table: &str) -> Self {
+        self.table = Some(table.to_string());
+        self
+    }
+
+    /// 设定 WHERE 条件
+    pub fn r#where(mut self, condition: &str) -> Self {
+        self.where_clauses.push(condition.to_string());
+        self
+    }
+
+    /// 添加 ORDER BY 语句
+    pub fn order_by(mut self, column: &str, desc: bool) -> Self {
+        let order = if desc { "DESC" } else { "ASC" };
+        self.order_by.push(format!("{} {}", column, order));
+        self
+    }
+
+    /// 设定 GROUP BY
+    pub fn group_by(mut self, column: &str) -> Self {
+        // self.group_by = columns.iter().map(|s| s.to_string()).collect();
+        self.group_by.push(column.to_string());
+        self
+    }
+
+    /// 设定 HAVING 条件
+    pub fn having(mut self, condition: &str) -> Self {
+        self.having.push(condition.to_string());
+        self
+    }
+
+    /// 添加 JOIN
+    pub fn join(mut self, table: &str, on_condition: &str) -> Self {
+        self.joins
+            .push(format!("JOIN {} ON {}", table, on_condition));
+        self
+    }
+
+    /// 设置 LIMIT
+    pub fn limit(mut self, limit: u32) -> Self {
+        self.limit = Some(limit);
+        self
+    }
+
+    /// 设置 OFFSET
+    pub fn offset(mut self, offset: u32) -> Self {
+        self.offset = Some(offset);
+        self
+    }
+
+    pub fn insert(mut self, columns: &[&str]) -> Self {
+        self.query_type = Some("INSERT".to_string());
+
+        self.columns = columns.iter().map(|s| s.to_string()).collect();
+        self
+    }
+
+    /// 设定 INSERT INTO 语句
+    pub fn insert_into(mut self, table: &str, columns: &[&str]) -> Self {
+        self.query_type = Some("INSERT".to_string());
+        self.table = Some(table.to_string());
+        self.columns = columns.iter().map(|s| s.to_string()).collect();
+        self
+    }
+
+    /// 设定插入的 VALUES
+    pub fn values(mut self, values: &[&str]) -> Self {
+        self.values = values.iter().map(|s| format!("'{}'", s)).collect();
+        self
+    }
+
+    pub fn update(mut self) -> Self {
+        self.query_type = Some("UPDATE".to_string());
+
+        self
+    }
+
+    /// 设定 UPDATE 语句
+    pub fn update_to(mut self, table: &str) -> Self {
+        self.query_type = Some("UPDATE".to_string());
+        self.table = Some(table.to_string());
+        self
+    }
+
+    /// 设定 SET 语句
+    pub fn set(mut self, column: &str, value: &str) -> Self {
+        self.set_clauses.push(format!("{} = '{}'", column, value));
+        self
+    }
+    pub fn delete(mut self) -> Self {
+        self.query_type = Some("DELETE".to_string());
+
+        self
+    }
+
+    /// 设定 DELETE 语句
+    pub fn delete_from(mut self, table: &str) -> Self {
+        self.query_type = Some("DELETE".to_string());
+        self.table = Some(table.to_string());
+        self
+    }
+    /*
+    /// 生成最终的 SQL 语句
+    pub fn build(self) -> String {
+        match self.query_type.as_deref() {
+            Some("SELECT") => {
+                let columns = if self.columns.is_empty() {
+                    "*".to_string()
+                } else {
+                    self.columns.join(", ")
+                };
+                let mut sql = format!("SELECT {} FROM {}", columns, self.table.unwrap());
+
+                if !self.joins.is_empty() {
+                    sql.push(' ');
+                    sql.push_str(&self.joins.join(" "));
+                }
+                if !self.where_clauses.is_empty() {
+                    sql.push_str(" WHERE ");
+                    sql.push_str(&self.where_clauses.join(" AND "));
+                }
+                if !self.group_by.is_empty() {
+                    sql.push_str(" GROUP BY ");
+                    sql.push_str(&self.group_by.join(", "));
+                }
+                if !self.having.is_empty() {
+                    sql.push_str(" HAVING ");
+                    sql.push_str(&self.having.join(" AND "));
+                }
+                if !self.order_by.is_empty() {
+                    sql.push_str(" ORDER BY ");
+                    sql.push_str(&self.order_by.join(", "));
+                }
+                if let Some(limit) = self.limit {
+                    sql.push_str(&format!(" LIMIT {}", limit));
+                }
+                if let Some(offset) = self.offset {
+                    sql.push_str(&format!(" OFFSET {}", offset));
+                }
+
+                sql
+            }
+            Some("INSERT") => format!(
+                "INSERT INTO {} ({}) VALUES ({})",
+                self.table.unwrap(),
+                self.columns.join(", "),
+                self.values.join(", ")
+            ),
+            Some("UPDATE") => {
+                let mut sql = format!("UPDATE {} SET {}", self.table.unwrap(), self.set_clauses.join(", "));
+                if !self.where_clauses.is_empty() {
+                    sql.push_str(" WHERE ");
+                    sql.push_str(&self.where_clauses.join(" AND "));
+                }
+                sql
+            }
+            Some("DELETE") => {
+                let mut sql = format!("DELETE FROM {}", self.table.unwrap());
+                if !self.where_clauses.is_empty() {
+                    sql.push_str(" WHERE ");
+                    sql.push_str(&self.where_clauses.join(" AND "));
+                }
+                sql
+            }
+            _ => "INVALID SQL".to_string(),
+        }
+    }
+    */
 }
-}
-fn table_name() -> String {
-    "user".to_string()
-}
-fn primary_key_column() -> String{
-    "id".to_string()
-}  
-} 
