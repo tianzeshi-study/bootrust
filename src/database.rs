@@ -48,15 +48,3 @@ pub trait RelationalDatabase: Clone {
     fn get_connection(&self) -> Result<Connection, DbError>;
     fn release_connection(&self, conn: Connection) -> Result<(), DbError>;
 }
-
-/*// 定义通用的数据库错误类型
-#[derive(Debug)]
-pub enum DbError {
-    ConnectionError(String),
-    QueryError(String),
-    TransactionError(String),
-    PoolError(String),
-    ConversionError(String),
-    // 其他错误类型...
-}
-*/
