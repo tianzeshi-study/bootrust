@@ -124,7 +124,7 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
         match self.value {
             Value::Table(fields) => {
                 let deserializer = StructDeserializer {
-                    fields: fields,
+                    fields,
                     current: 0,
                 };
 
@@ -343,7 +343,7 @@ impl<'de> Deserialize<'de> for Value {
 // Create a ByteBufVisitor to handle the byte buffer.
 struct ByteBufVisitor;
 
-impl<'de> Visitor<'de> for ByteBufVisitor {
+impl Visitor<'_> for ByteBufVisitor {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

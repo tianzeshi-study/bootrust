@@ -1,6 +1,5 @@
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
-use crate::autodeser::EntityDeserializer;
-use crate::autoserde::EntityConvertor;
+use crate::serde::{EntityDeserializer,EntityConvertor};
 use serde::{de::Deserialize, ser::Serialize};
 use std::io::Cursor;
 use std::marker::PhantomData;
@@ -196,7 +195,7 @@ where
     }
 
     fn prepare(&self) -> SqlExecutor<Self, T> {
-        SqlExecutor::new(&self)
+        SqlExecutor::new(self)
     }
 }
 
@@ -221,11 +220,9 @@ where
         }
     }
 
-    fn row_to_entity(row: Row) -> Result<T, DbError> {
-        Err(DbError::ConversionError("error".to_string()))
-    }
+    
     fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
-        // vec![("null".to_string(), Value::Null)]
+
         let cursor = Cursor::new(Vec::new());
         let mut convertor = EntityConvertor::new(cursor);
         let result = entity.serialize(&mut convertor);
@@ -271,7 +268,7 @@ where
     /// 创建一个新的 SQL 生成器
     pub fn new(dao: &'a D) -> Self {
         Self {
-            dao: dao,
+            dao,
             _table: PhantomData,
             query_type: None,
             table: Some(dao.table()),

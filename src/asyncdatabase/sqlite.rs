@@ -1,5 +1,5 @@
 use crate::asyncdatabase::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
-use async_trait::async_trait;
+
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{types::Type, ToSql};

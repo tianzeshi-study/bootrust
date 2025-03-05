@@ -337,7 +337,7 @@ pub struct EntitySerializeStruct<'a, W: 'a> {
 }
 
 // 为 EntitySerializeStruct 实现 SerializeStruct trait
-impl<'a, W> SerializeStruct for EntitySerializeStruct<'a, W>
+impl<W> SerializeStruct for EntitySerializeStruct<'_, W>
 where
     W: io::Write,
 {
@@ -366,7 +366,7 @@ where
     }
 }
 
-impl<'a, W> SerializeMap for EntitySerializeStruct<'a, W>
+impl<W> SerializeMap for EntitySerializeStruct<'_, W>
 where
     W: io::Write,
 {
