@@ -281,7 +281,15 @@ where
     where
         T: ?Sized + Display,
     {
-        unimplemented!()
+        // println!("{}", &value);
+        // unimplemented!()
+        // use std::str::FromStr;
+        //
+        // let datetime_utc = chrono::DateTime::<chrono::Utc>::from_str(value).expect("Invalid datetime format");
+        // let datetime_fixed = chrono::DateTime::parse_from_rfc3339(value).expect("Invalid datetime format");
+        // let datetime_utc: chrono::DateTime<chrono::Utc> = datetime_fixed.into();
+        // Ok(Value::DateTime(datetime_utc))
+        Ok(Value::Text(value.to_string()))
     }
 
     // 是否是人类可读的格式

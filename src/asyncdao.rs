@@ -1,13 +1,14 @@
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
+use crate::autodeser::EntityDeserializer;
 use crate::autoserde::EntityConvertor;
-use serde::ser::Serialize;
+use serde::{de::Deserialize, ser::Serialize};
 use std::io::Cursor;
 use std::marker::PhantomData;
 
 #[async_trait::async_trait]
 pub trait Dao<T>: Sized
 where
-    T: Sized + Sync + Serialize,
+    T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
 {
     /// 关联的数据库类型
     type Database: RelationalDatabase;
@@ -22,7 +23,17 @@ where
     /// 创建新的 DAO 实例
     fn new(database: Self::Database) -> Self;
 
-    fn row_to_entity(row: Row) -> Result<T, DbError>;
+    fn row_to_entity(row: Row) -> Result<T, DbError> {
+        let values: Vec<Value> = row.values;
+        let table: Vec<(String, Value)> = row
+            .columns
+            .into_iter()
+            .enumerate()
+            .map(|(i, s)| (s, values[i].clone()))
+            .collect();
+        let de = EntityDeserializer::from_value(Value::Table(table));
+        T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
+    }
 
     fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
         let cursor = Cursor::new(Vec::new());
@@ -195,7 +206,7 @@ pub struct DataAccessory<T: Sized, D: RelationalDatabase> {
 }
 impl<T, D> Dao<T> for DataAccessory<T, D>
 where
-    T: Sized + Sync + Serialize,
+    T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
     D: RelationalDatabase,
 {
     type Database = D;
@@ -234,7 +245,7 @@ where
 struct SqlExecutor<'a, D, T>
 where
     D: Dao<T>,
-    T: Sized + Sync + Serialize,
+    T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
 {
     dao: &'a D,
     _table: PhantomData<T>,
@@ -255,7 +266,7 @@ where
 impl<'a, D, T> SqlExecutor<'a, D, T>
 where
     D: Dao<T>,
-    T: Sized + Sync + Serialize,
+    T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
 {
     /// 创建一个新的 SQL 生成器
     pub fn new(dao: &'a D) -> Self {

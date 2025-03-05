@@ -3,12 +3,12 @@ use bootrust::asyncdatabase::{
     postgres::PostgresDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
 };
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use std::marker::PhantomData;
 
 // 商品实体
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Product {
     id: i64,
     name: String,
@@ -20,7 +20,7 @@ struct Product {
 }
 
 // 购物车实体
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct CartItem {
     id: i64,
     user_id: i64,
@@ -31,7 +31,7 @@ struct CartItem {
 }
 
 // 支付信息实体
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Payment {
     id: i64,
     order_id: i64,

@@ -3,8 +3,8 @@
 use crate::asyncdatabase::Value;
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, MapAccess, Visitor};
 // use serde::de::value::Error;
-use serde::de::Error;
 use serde::de::value::Error as ValueError;
+use serde::de::Error;
 use std::fmt;
 
 // 反序列化器结构体
@@ -29,13 +29,12 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
     where
         V: Visitor<'de>,
     {
-        dbg!("i32 value: {:?}", &self.value);
         match self.value {
             Value::Int(i) => visitor.visit_i32(i),
             _ => Err(Error::custom("Expected i32 value")),
         }
     }
-      fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_i64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -44,7 +43,7 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
             _ => Err(Error::custom("Expected i64 value")),
         }
     }
-      fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_f32<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -53,7 +52,7 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
             _ => Err(Error::custom("Expected f32 value")),
         }
     }
-      fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_f64<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -63,12 +62,11 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
         }
     }
 
-
     fn deserialize_bool<V>(self, visitor: V) -> Result<V::Value, Self::Error>
-     where
+    where
         V: Visitor<'de>,
     {
-         match self.value {
+        match self.value {
             Value::Boolean(b) => visitor.visit_bool(b),
             _ => Err(Error::custom("Expected boolean value")),
         }
@@ -79,13 +77,12 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
     where
         V: Visitor<'de>,
     {
-            println!("string  value: {:?}", &self.value);
         match self.value {
             Value::Text(s) => visitor.visit_string(s),
             _ => Err(Error::custom("Expected string value")),
         }
     }
-      fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_str<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -95,15 +92,14 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
         }
     }
 
-      fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_bytes<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
-         match self.value {
+        match self.value {
             Value::Bytes(b) => visitor.visit_bytes(&b),
             _ => Err(Error::custom("Expected bytes value")),
         }
-
     }
     fn deserialize_byte_buf<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
@@ -127,18 +123,18 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
     {
         match self.value {
             Value::Table(fields) => {
-                let deserializer = StructDeserializer { 
-                fields: fields,
-current:0,
-};
-                dbg!("visiting map");
+                let deserializer = StructDeserializer {
+                    fields: fields,
+                    current: 0,
+                };
+
                 visitor.visit_map(deserializer)
             }
             _ => Err(Error::custom("Expected struct value")),
         }
     }
 
-     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_option<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -165,7 +161,7 @@ current:0,
             Value::Text(s) => visitor.visit_string(s),
             Value::Bytes(b) => visitor.visit_byte_buf(b), // or visit_bytes
             Value::Table(_) => self.deserialize_struct("", &[], visitor), // Treat Table as struct
-             Value::DateTime(dt) => {
+            Value::DateTime(dt) => {
                 // Assuming you want to deserialize DateTime from a string
                 let s = dt.to_rfc3339();
                 visitor.visit_string(s)
@@ -176,17 +172,16 @@ current:0,
     }
 
     serde::forward_to_deserialize_any! {
-        
+
          i8 i16   i128
         u8 u16 u32 u64 u128
-         char  
+         char
          unit unit_struct
         newtype_struct seq tuple
         tuple_struct map enum
         identifier ignored_any
 
     }
-
 }
 
 // 用于反序列化结构体的辅助结构体
@@ -194,7 +189,6 @@ struct StructDeserializer {
     fields: Vec<(String, Value)>,
     current: usize,
     // fields: std::vec::IntoIter<(String, Value)>,
-
 }
 
 // 为 StructDeserializer 实现 MapAccess trait
@@ -205,10 +199,8 @@ impl<'de> MapAccess<'de> for StructDeserializer {
     where
         K: DeserializeSeed<'de>,
     {
-        dbg!(&self.fields);
         // if let Some((key, _value)) = self.fields.next() {
         if let Some((key, _value)) = self.fields.get(self.current) {
-            dbg!(&key, &_value);
             let key_de = EntityDeserializer::from_value(Value::Text(key.clone()));
             seed.deserialize(key_de).map(Some)
         } else {
@@ -220,17 +212,16 @@ impl<'de> MapAccess<'de> for StructDeserializer {
     where
         V: DeserializeSeed<'de>,
     {
-        dbg!(&self.fields);
         // if let Some((_, value)) = self.fields.next() {
-            if let Some((_, value)) = self.fields.get(self.current) {
+        if let Some((_, value)) = self.fields.get(self.current) {
             let value_de = EntityDeserializer::from_value(value.clone());
-            self.current +=1;
+            self.current += 1;
             seed.deserialize(value_de)
         } else {
             Err(Error::custom("Expected value"))
         }
     }
-     fn size_hint(&self) -> Option<usize> {
+    fn size_hint(&self) -> Option<usize> {
         Some(self.fields.len())
     }
 }
@@ -261,7 +252,6 @@ impl<'de> Deserialize<'de> for Value {
             where
                 E: de::Error,
             {
-                println!("visiting i32 {}", &v);
                 Ok(Value::Int(v))
             }
             fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
@@ -283,15 +273,13 @@ impl<'de> Deserialize<'de> for Value {
                 Ok(Value::Double(v))
             }
 
-
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
-                println!("visiting string {}", &v);
                 Ok(Value::Text(v))
             }
-             fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
             where
                 E: de::Error,
             {
@@ -299,10 +287,9 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-             where
+            where
                 E: de::Error,
             {
-                println!("visiting bytes");
                 Ok(Value::Bytes(v.to_vec()))
             }
 
@@ -310,7 +297,7 @@ impl<'de> Deserialize<'de> for Value {
             where
                 E: de::Error,
             {
-                 Ok(Value::Bytes(v))
+                Ok(Value::Bytes(v))
             }
 
             fn visit_none<E>(self) -> Result<Self::Value, E>
@@ -333,15 +320,14 @@ impl<'de> Deserialize<'de> for Value {
             {
                 Ok(Value::Null)
             }
-              fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
+            fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
             where
                 M: MapAccess<'de>,
             {
-                println!("starting visit");
                 let mut fields = Vec::new();
                 while let Some(key) = access.next_key::<String>()? {
                     let value = access.next_value::<Value>()?;
-                    println!("pushing fields {}: {:?}", &key, &value);
+
                     fields.push((key, value));
                 }
                 Ok(Value::Table(fields))
@@ -354,25 +340,23 @@ impl<'de> Deserialize<'de> for Value {
     }
 }
 
+// Create a ByteBufVisitor to handle the byte buffer.
+struct ByteBufVisitor;
 
-        // Create a ByteBufVisitor to handle the byte buffer.
-        struct ByteBufVisitor;
+impl<'de> Visitor<'de> for ByteBufVisitor {
+    type Value = Vec<u8>;
 
-        impl<'de> Visitor<'de> for ByteBufVisitor {
-            type Value = Vec<u8>;
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("a byte buffer")
+    }
 
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a byte buffer")
-            }
-
-            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(v)
-            }
-        }
-
+    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
+    where
+        E: de::Error,
+    {
+        Ok(v)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -441,10 +425,10 @@ mod tests {
         // let result = Vec::<u8>::deserialize(de).unwrap();
         // assert_eq!(result, vec![1, 2, 3]);
 
-        let result = de.deserialize_byte_buf(ByteBufVisitor{}).unwrap();
-        assert_eq!(result, vec![1,2,3]);
+        let result = de.deserialize_byte_buf(ByteBufVisitor {}).unwrap();
+        assert_eq!(result, vec![1, 2, 3]);
     }
-     #[test]
+    #[test]
     fn test_deserialize_option_some() {
         let value = Value::Text("hello".to_string());
         let de = EntityDeserializer::from_value(value);
@@ -460,7 +444,6 @@ mod tests {
         assert_eq!(result, None);
     }
 
-
     #[test]
     fn test_deserialize_struct() {
         #[derive(Deserialize, Debug, PartialEq)]
@@ -474,9 +457,9 @@ mod tests {
             ("b".to_string(), Value::Text("hello".to_string())),
         ];
         let value = Value::Table(fields);
-        dbg!(&value);
+
         let de = EntityDeserializer::from_value(value);
-        dbg!(&de);
+
         let result = TestStruct::deserialize(de).unwrap();
         assert_eq!(
             result,
@@ -498,49 +481,48 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_value()
-    {
+    fn test_deserialize_value() {
         let value = Value::Int(42);
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Int(42));
+        assert_eq!(result, Value::Int(42));
 
         let value = Value::Bigint(42);
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Bigint(42));
+        assert_eq!(result, Value::Bigint(42));
 
         let value = Value::Float(42.0);
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Float(42.0));
+        assert_eq!(result, Value::Float(42.0));
 
         let value = Value::Double(42.0);
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Double(42.0));
+        assert_eq!(result, Value::Double(42.0));
 
         let value = Value::Boolean(true);
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Boolean(true));
+        assert_eq!(result, Value::Boolean(true));
 
         let value = Value::Text("test".to_string());
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Text("test".to_string()));
+        assert_eq!(result, Value::Text("test".to_string()));
 
-        let value = Value::Bytes(vec![1,2,3]);
+        let value = Value::Bytes(vec![1, 2, 3]);
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Bytes(vec![1,2,3]));
+        assert_eq!(result, Value::Bytes(vec![1, 2, 3]));
 
         let value = Value::Null;
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(result,Value::Null);
+        assert_eq!(result, Value::Null);
     }
-    #[test] 
+    #[test]
     fn test_table() {
         let fields = vec![
             ("a".to_string(), Value::Int(42)),
@@ -549,9 +531,6 @@ mod tests {
         let value = Value::Table(fields.clone());
         let de = EntityDeserializer::from_value(value);
         let result = Value::deserialize(de).unwrap();
-        assert_eq!(
-            result,
-            Value::Table(fields)
-        );
+        assert_eq!(result, Value::Table(fields));
     }
 }

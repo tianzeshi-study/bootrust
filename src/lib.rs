@@ -1,8 +1,8 @@
 #![feature(trait_alias)]
 pub mod asyncdao;
 pub mod asyncdatabase;
-mod autoserde;
 mod autodeser;
+mod autoserde;
 #[cfg(feature = "redis_async")]
 pub mod cache;
 mod common;
