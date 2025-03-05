@@ -40,7 +40,7 @@ pub enum DbError {
 }
 
 // 定义通用的数据库值类型
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Value {
     Null,
     Table(Vec<(String, Value)>),

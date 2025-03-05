@@ -10,20 +10,6 @@ use std::fmt::Display;
 use std::io;
 // 定义 Value 枚举，表示不同的数据类型
 #[derive(Debug)]
-pub enum Value1 {
-    Null,
-    Table(Vec<(String, Value)>),
-    Int(i32),
-    Bigint(i64),
-    Float(f32),
-    Double(f64),
-    Text(String),
-    Boolean(bool),
-    Bytes(Vec<u8>),
-    DateTime(chrono::DateTime<chrono::Utc>),
-    // 其他数据类型...
-}
-
 // 实体转换器结构体
 pub struct EntityConvertor<W> {
     writer: W,                    // 写入器
@@ -314,113 +300,6 @@ where
         _ => None,
     }
 }
-/*
-// 为序列化结构体提供服务的 trait
-pub trait SerializeSeq {
-    /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
-    type Ok;
-
-    /// 必须与我们的 `Serializer` 的 `Error` 类型匹配。
-    type Error: Error;
-
-    /// Serialize a sequence element.
-    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: ?Sized + Serialize;
-
-    /// Finish serializing a sequence.
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-
-pub trait SerializeTuple {
-    /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
-    type Ok;
-
-    /// 必须与我们的 `Serializer` 的 `Error` 类型匹配。
-    type Error: Error;
-
-    /// Serialize a tuple element.
-    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: ?Sized + Serialize;
-
-    /// Finish serializing a tuple.
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-
-pub trait SerializeTupleStruct {
-    /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
-    type Ok;
-
-    /// 必须与我们的 `Serializer` 的 `Error` 类型匹配。
-    type Error: Error;
-
-    /// Serialize a tuple struct field.
-    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: ?Sized + Serialize;
-
-    /// Finish serializing a tuple struct.
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-
-pub trait SerializeTupleVariant {
-    /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
-    type Ok;
-
-    /// 必须与我们的 `Serializer` 的 `Error` 类型匹配。
-    type Error: Error;
-
-    /// Serialize a tuple variant field.
-    fn serialize_field<T>(&mut self, value: &T) -> Result<(), Self::Error>
-    where
-        T: ?Sized + Serialize;
-
-    /// Finish serializing a tuple variant.
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-
-pub trait SerializeMap {
-    /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
-    type Ok;
-
-    /// 必须与我们的 `Serializer` 的 `Error` 类型匹配。
-    type Error: Error;
-
-    /// Serialize a map entry.
-    fn serialize_entry<K, V>(&mut self, key: &K, value: &V) -> Result<(), Self::Error>
-    where
-        K: ?Sized + Serialize,
-        V: ?Sized + Serialize;
-
-    /// Finish serializing a map.
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-
-// 为结构体序列化提供服务的 trait
-pub trait SerializeStruct {
-    // 必须与我们的 Serializer 的 Ok 类型匹配
-    type Ok;
-
-    // 必须与我们的 Serializer 的 Error 类型匹配
-    type Error: Error;
-
-    // 序列化结构体字段
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
-    where
-        T: ?Sized + Serialize;
-
-    // 跳过结构体字段（默认实现不做任何事情）
-    #[inline]
-    fn skip_field(&mut self, key: &'static str) -> Result<(), Self::Error> {
-        let _ = key;
-        Ok(())
-    }
-
-    // 完成结构体序列化
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
-*/
 pub trait SerializeStructVariant {
     /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
     type Ok;

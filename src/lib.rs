@@ -2,6 +2,7 @@
 pub mod asyncdao;
 pub mod asyncdatabase;
 mod autoserde;
+mod autodeser;
 #[cfg(feature = "redis_async")]
 pub mod cache;
 mod common;
