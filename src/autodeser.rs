@@ -472,7 +472,7 @@ mod tests {
 
     // #[test]
     fn test_deserialize_datetime() {
-        use chrono::{DateTime, Utc};
+        use chrono::Utc;
         let now = Utc::now();
         let value = Value::DateTime(now);
         let de = EntityDeserializer::from_value(value);
