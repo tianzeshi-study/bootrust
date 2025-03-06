@@ -63,6 +63,18 @@ pub struct Row {
     pub values: Vec<Value>,
 }
 
+impl Row {
+    pub fn to_table(&self) ->Value {
+        let table: Vec<(String, Value)> = self
+            .columns
+            .iter()
+            .enumerate()
+            .map(|(i, s)| (s.clone(), self.values[i].clone()))
+            .collect();
+            Value::Table(table)
+    }
+}
+
 // 定义连接类型（可以根据需要扩展）
 pub struct Connection {
     // 连接相关字段
