@@ -101,7 +101,7 @@ impl MySqlDatabase {
         f(&mut conn)
     }
 
-    async fn get_connection(&self) -> Result<Connection, DbError> {
+    pub async fn get_connection(&self) -> Result<Connection, DbError> {
         let _conn = self
             .pool
             .get()
@@ -109,7 +109,7 @@ impl MySqlDatabase {
         Ok(Connection {})
     }
 
-    async fn release_connection(&self, _conn: Connection) -> Result<(), DbError> {
+    pub async fn release_connection(&self, _conn: Connection) -> Result<(), DbError> {
         Ok(())
     }
 }

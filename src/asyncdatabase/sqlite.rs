@@ -70,7 +70,7 @@ impl SqliteDatabase {
 
         f(conn)
     }
-    async fn get_connection(&self) -> Result<Connection, DbError> {
+    pub async fn get_connection(&self) -> Result<Connection, DbError> {
         let _conn = self
             .pool
             .get()
@@ -78,7 +78,7 @@ impl SqliteDatabase {
         Ok(Connection {})
     }
 
-    async fn release_connection(&self, _conn: Connection) -> Result<(), DbError> {
+    pub async fn release_connection(&self, _conn: Connection) -> Result<(), DbError> {
         Ok(())
     }
 }

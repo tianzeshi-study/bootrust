@@ -64,12 +64,12 @@ where
     }
 
     // 序列化 i8 值
-    fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
+    fn serialize_i8(self, _v: i8) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
     // 序列化 i16 值
-    fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
+    fn serialize_i16(self, _v: i16) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
@@ -90,21 +90,21 @@ where
     }
 
     // 序列化 u8 值
-    fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
+    fn serialize_u8(self, _v: u8) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
     // 序列化 u16 值
-    fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
+    fn serialize_u16(self, _v: u16) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
     // 序列化 u32 值
-    fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
+    fn serialize_u32(self, _v: u32) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
     // 序列化 u64 值
-    fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
+    fn serialize_u64(self, _v: u64) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
@@ -123,7 +123,7 @@ where
         Ok(Value::Double(v))
     }
 
-    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
+    fn serialize_char(self, _v: char) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
@@ -139,7 +139,7 @@ where
         Ok(Value::Null)
     }
 
-    fn serialize_some<T>(self, value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
     where
         T: ?Sized + Serialize,
     {
@@ -151,16 +151,16 @@ where
     }
 
     // 序列化单元结构体（例如：struct Unit;）
-    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
 
     // 序列化单元变体（例如：enum E { A, B } 中的 E::A）
     fn serialize_unit_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
     ) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
     }
@@ -168,8 +168,8 @@ where
     // 序列化 newtype 结构体（例如：struct Millimeters(u8);）
     fn serialize_newtype_struct<T>(
         self,
-        name: &'static str,
-        value: &T,
+        _name: &'static str,
+        _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: ?Sized + Serialize,
@@ -180,10 +180,10 @@ where
     // 序列化 newtype 变体（例如：enum E { N(u8) } 中的 E::N）
     fn serialize_newtype_variant<T>(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
-        value: &T,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _value: &T,
     ) -> Result<Self::Ok, Self::Error>
     where
         T: ?Sized + Serialize,
@@ -192,20 +192,20 @@ where
     }
 
     // 序列化可变长度的序列（例如：Vec）
-    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         unimplemented!()
     }
 
     // 序列化固定长度的序列（例如：数组）
-    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple, Self::Error> {
         unimplemented!()
     }
 
     // 序列化元组结构体（例如：struct Rgb(u8, u8, u8);）
     fn serialize_tuple_struct(
         self,
-        name: &'static str,
-        len: usize,
+        _name: &'static str,
+        _len: usize,
     ) -> Result<Self::SerializeTupleStruct, Self::Error> {
         unimplemented!()
     }
@@ -213,24 +213,24 @@ where
     // 序列化元组变体
     fn serialize_tuple_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
-        len: usize,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
     ) -> Result<Self::SerializeTupleVariant, Self::Error> {
         unimplemented!()
     }
 
     // 序列化 Map
-    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
         unimplemented!()
     }
 
     // 序列化结构体
     fn serialize_struct(
         self,
-        name: &'static str,
-        len: usize,
+        _name: &'static str,
+        _len: usize,
     ) -> Result<Self::SerializeStruct, Self::Error> {
         Ok(EntitySerializeStruct {
             entity_convertor: self,
@@ -241,10 +241,10 @@ where
     // 序列化结构体变体
     fn serialize_struct_variant(
         self,
-        name: &'static str,
-        variant_index: u32,
-        variant: &'static str,
-        len: usize,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
     ) -> Result<Self::SerializeStructVariant, Self::Error> {
         unimplemented!()
     }
@@ -279,14 +279,7 @@ where
     where
         T: ?Sized + Display,
     {
-        // println!("{}", &value);
-        // unimplemented!()
-        // use std::str::FromStr;
-        //
-        // let datetime_utc = chrono::DateTime::<chrono::Utc>::from_str(value).expect("Invalid datetime format");
-        // let datetime_fixed = chrono::DateTime::parse_from_rfc3339(value).expect("Invalid datetime format");
-        // let datetime_utc: chrono::DateTime<chrono::Utc> = datetime_fixed.into();
-        // Ok(Value::DateTime(datetime_utc))
+
         Ok(Value::Text(value.to_string()))
     }
 
@@ -376,13 +369,13 @@ where
     type Error = serde::de::value::Error;
 
     // 序列化字段
-    fn serialize_key<T>(&mut self, key: &T) -> Result<(), Self::Error>
+    fn serialize_key<T>(&mut self, _key: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
     {
         unimplemented!()
     }
-    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    fn serialize_value<T>(&mut self, _value: &T) -> Result<(), Self::Error>
     where
         T: ?Sized + Serialize,
     {

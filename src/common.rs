@@ -69,7 +69,7 @@ pub struct Connection {
 }
 
 // 定义数据库连接池类型
-pub enum DatabaseType {
+pub enum _DatabaseType {
     Postgres,
     MySQL,
     SQLite,

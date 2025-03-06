@@ -124,7 +124,7 @@ where
     }
 }
 
-trait CachedData = 'static + Sized + Sync + Send + Serialize + DeserializeOwned;
+pub trait CachedData = 'static + Sized + Sync + Send + Serialize + DeserializeOwned;
 #[async_trait]
 pub trait CacheDb {
     type Error;
@@ -152,7 +152,7 @@ impl Redis {
     }
 }
 
-    async  fn auto_config() -> impl CacheDb {
+    pub async  fn auto_config() -> impl CacheDb {
         Redis::new(&std::env::var("BOOTRUST_REDIS_URL").unwrap_or_else(|_| "redis://root@127.0.0.1:6379/1".to_string())).await.unwrap()
     }
 

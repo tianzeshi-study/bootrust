@@ -239,7 +239,7 @@ where
     }
 }
 
-struct SqlExecutor<'a, D, T>
+pub struct SqlExecutor<'a, D, T>
 where
     D: Dao<T>,
     T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
