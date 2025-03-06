@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use bootrust::asyncdao::Dao;
 use bootrust::asyncdatabase::{
     postgres::PostgresDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
@@ -576,8 +577,11 @@ async fn test_transaction() {
 #[serial]
 async fn test_transaction_rollback() {
     let db = setup_ecommerce_test_db().await;
-    let product_dao = ECommerceDo::new(db.clone());
-    let cart_dao = ECommerceDo::new(db.clone());
+    let arc_db = Arc::new(db);
+    let product_dao = ECommerceDo::new(Arc::clone(&arc_db));
+let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
+    // let product_dao = ECommerceDo::new(db.clone());
+    // let cart_dao = ECommerceDo::new(db.clone());
 
     // 开始事务
     let result = product_dao.begin_transaction().await;
@@ -610,4 +614,23 @@ async fn test_transaction_rollback() {
         .await
         .unwrap();
     assert!(found_cart_item.is_none());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_arc_db() {
+    let db = setup_ecommerce_test_db().await;
+    let arc_db = Arc::new(db);
+    let product_dao = ECommerceDo::<Product, _>::new(Arc::clone(&arc_db));
+
+let product = create_test_product();
+    product_dao.create(&product).await.unwrap();
+
+let added_item = product_dao
+        .find_by_id(Value::Bigint(product.id))
+        .await
+        .unwrap();
+    assert!(added_item.is_some());
+    assert_eq!(added_item.unwrap().id, product.id);
+
 }
