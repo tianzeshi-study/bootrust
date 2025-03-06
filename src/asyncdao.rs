@@ -33,7 +33,13 @@ where
         let de = EntityDeserializer::from_value(Value::Table(table));
         T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
     }
-
+    
+fn rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
+    rows.into_iter()
+        .map(|row|
+        Self::row_to_entity(row)
+        ).collect()
+}
     fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
         let cursor = Cursor::new(Vec::new());
         let mut convertor = EntityConvertor::new(cursor);
@@ -398,71 +404,88 @@ where
         self.table = Some(table.to_string());
         self
     }
-    /*
-    /// 生成最终的 SQL 语句
-    pub fn build(self) -> String {
+
+        /// 生成最终的 SQL 语句
+    pub async fn execute(self) -> Result<Vec<T>, DbError> {
+        let mut sql = String::new();
+
         match self.query_type.as_deref() {
             Some("SELECT") => {
-                let columns = if self.columns.is_empty() {
-                    "*".to_string()
-                } else {
-                    self.columns.join(", ")
-                };
-                let mut sql = format!("SELECT {} FROM {}", columns, self.table.unwrap());
+                sql.push_str("SELECT ");
+                sql.push_str(&self.columns.join(", "));
+                sql.push_str(" FROM ");
+                sql.push_str(&self.table.unwrap_or_else(|| self.dao.table()));
 
                 if !self.joins.is_empty() {
-                    sql.push(' ');
+                    sql.push_str(" ");
                     sql.push_str(&self.joins.join(" "));
                 }
+
                 if !self.where_clauses.is_empty() {
                     sql.push_str(" WHERE ");
                     sql.push_str(&self.where_clauses.join(" AND "));
                 }
+
                 if !self.group_by.is_empty() {
                     sql.push_str(" GROUP BY ");
                     sql.push_str(&self.group_by.join(", "));
                 }
+
                 if !self.having.is_empty() {
                     sql.push_str(" HAVING ");
                     sql.push_str(&self.having.join(" AND "));
                 }
+
                 if !self.order_by.is_empty() {
                     sql.push_str(" ORDER BY ");
                     sql.push_str(&self.order_by.join(", "));
                 }
+
                 if let Some(limit) = self.limit {
                     sql.push_str(&format!(" LIMIT {}", limit));
                 }
+
                 if let Some(offset) = self.offset {
                     sql.push_str(&format!(" OFFSET {}", offset));
                 }
-
-                sql
             }
-            Some("INSERT") => format!(
-                "INSERT INTO {} ({}) VALUES ({})",
-                self.table.unwrap(),
-                self.columns.join(", "),
-                self.values.join(", ")
-            ),
+
+            Some("INSERT") => {
+                sql.push_str("INSERT INTO ");
+                sql.push_str(&self.table.unwrap_or_else(|| self.dao.table()));
+                sql.push_str(" (");
+                sql.push_str(&self.columns.join(", "));
+                sql.push_str(") VALUES (");
+                sql.push_str(&self.values.join(", "));
+                sql.push_str(")");
+            }
             Some("UPDATE") => {
-                let mut sql = format!("UPDATE {} SET {}", self.table.unwrap(), self.set_clauses.join(", "));
+                sql.push_str("UPDATE ");
+                sql.push_str(&self.table.unwrap_or_else(|| self.dao.table()));
+                sql.push_str(" SET ");
+                sql.push_str(&self.set_clauses.join(", "));
                 if !self.where_clauses.is_empty() {
                     sql.push_str(" WHERE ");
                     sql.push_str(&self.where_clauses.join(" AND "));
                 }
-                sql
             }
             Some("DELETE") => {
-                let mut sql = format!("DELETE FROM {}", self.table.unwrap());
+                sql.push_str("DELETE FROM ");
+                sql.push_str(&self.table.unwrap_or_else(|| self.dao.table()));
                 if !self.where_clauses.is_empty() {
                     sql.push_str(" WHERE ");
                     sql.push_str(&self.where_clauses.join(" AND "));
                 }
-                sql
             }
-            _ => "INVALID SQL".to_string(),
+
+            _ => {}
         }
+
+        let rows: Vec<Row>  = self.dao.database().query(&sql, vec![]).await?;
+        
+        self.dao.rows_to_entitys(rows)
     }
-    */
+
+
+
 }
