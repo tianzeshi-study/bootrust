@@ -1,5 +1,3 @@
-// src/deserializer.rs
-
 use crate::asyncdatabase::Value;
 use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, MapAccess, Visitor};
 // use serde::de::value::Error;
@@ -391,7 +389,8 @@ mod tests {
         let value = Value::Double(2.71828);
         let de = EntityDeserializer::from_value(value);
         let result = f64::deserialize(de).unwrap();
-        assert_eq!(result, 2.71828);
+        const F: f64 =2.71828; 
+        assert_eq!(result, F);
     }
 
     #[test]
@@ -399,7 +398,7 @@ mod tests {
         let value = Value::Boolean(true);
         let de = EntityDeserializer::from_value(value);
         let result = bool::deserialize(de).unwrap();
-        assert_eq!(result, true);
+        assert!(result);
     }
 
     #[test]
