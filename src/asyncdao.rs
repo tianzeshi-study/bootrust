@@ -158,7 +158,7 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
                 .clone(),
         );
 
-        dbg!(&query);
+
         self.database().execute(&query, values).await
     }
 
@@ -178,10 +178,17 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
     /// 自定义条件查询
     async fn find_by_condition(
         &self,
-        condition: &str,
+        condition: Vec<&str>,
         params: Vec<Value>,
     ) -> Result<Vec<T>, DbError> {
-        let query = format!("SELECT * FROM {} WHERE {}", Self::table_name(), condition);
+        let  conditions: Vec<String>  = condition.iter().map(|s| s.to_string()).collect();
+        let placeholders = self.placeholders(&conditions);
+        let where_condition: String =  conditions.iter()
+        .enumerate()
+        .map(|(i, c)| format!("{} {}", c,  placeholders[i]))
+        .collect::<Vec<String>>()
+        .join(" AND ");
+        let query = format!("SELECT * FROM {} WHERE {}", Self::table_name(), where_condition);
 
         let rows = self.database().query(&query, params).await?;
         let mut entities = Vec::with_capacity(rows.len());
@@ -259,7 +266,7 @@ where
     table: Option<String>,
     columns: Vec<String>,
     set_clauses: Vec<String>,
-    values: Vec<String>,
+    values: Vec<Value>,
     where_clauses: Vec<String>,
     order_by: Vec<String>,
     group_by: Vec<String>,
@@ -312,28 +319,42 @@ where
     }
 
     /// 设定 WHERE 条件
-    pub fn r#where(mut self, condition: &str) -> Self {
-        self.where_clauses.push(condition.to_string());
+    pub fn where_clauses(mut self, condition: Vec<&str>) -> Self {
+        let  conditions: Vec<String>  = condition.iter().map(|s| s.to_string()).collect();
+        let placeholders = self.dao.placeholders(&conditions);
+        let where_conditions: Vec<String> =  conditions.iter()
+        .enumerate()
+        .map(|(i, c)| format!("{} {}", c,  placeholders[i]))
+        .collect::<Vec<String>>();
+
+        self.where_clauses = where_conditions;
         self
     }
 
     /// 添加 ORDER BY 语句
-    pub fn order_by(mut self, column: &str, desc: bool) -> Self {
-        let order = if desc { "DESC" } else { "ASC" };
-        self.order_by.push(format!("{} {}", column, order));
+    pub fn order_by(mut self, conditions: Vec<&str>) -> Self {
+                self.order_by = conditions.iter().map(|s| s.to_string()).collect();
         self
     }
 
     /// 设定 GROUP BY
-    pub fn group_by(mut self, column: &str) -> Self {
-        // self.group_by = columns.iter().map(|s| s.to_string()).collect();
-        self.group_by.push(column.to_string());
+    pub fn group_by(mut self, columns: Vec<&str>) -> Self {
+        self.group_by = columns.iter().map(|s| s.to_string()).collect();
         self
     }
 
     /// 设定 HAVING 条件
-    pub fn having(mut self, condition: &str) -> Self {
-        self.having.push(condition.to_string());
+    pub fn having(mut self, conditions: Vec<&str>) -> Self {
+       let  conditions: Vec<String>  = conditions.iter().map(|s| s.to_string()).collect();
+        let total: Vec<String> = self.where_clauses.iter().cloned().chain(conditions.iter().cloned()).collect();
+        let placeholders = self.dao.placeholders(&total);
+        let having_condition =  conditions.iter()
+        .enumerate()
+        .map(|(i, c)| format!("{} {}", c,  placeholders[&self.where_clauses.len() + i]))
+        .collect::<Vec<String>>();
+        
+        self.having = having_condition;
+        
         self
     }
 
@@ -372,8 +393,8 @@ where
     }
 
     /// 设定插入的 VALUES
-    pub fn values(mut self, values: &[&str]) -> Self {
-        self.values = values.iter().map(|s| format!("'{}'", s)).collect();
+    pub fn values(mut self, values: Vec<Value>) -> Self {
+        self.values = values;
         self
     }
 
@@ -458,8 +479,8 @@ where
                 sql.push_str(&self.table.unwrap_or_else(|| self.dao.table()));
                 sql.push_str(" (");
                 sql.push_str(&self.columns.join(", "));
-                sql.push_str(") VALUES (");
-                sql.push_str(&self.values.join(", "));
+                // sql.push_str(") VALUES (");
+                // sql.push_str(&self.values.join(", "));
                 sql.push_str(")");
             }
             Some("UPDATE") => {
@@ -483,8 +504,8 @@ where
 
             _ => {}
         }
-
-        let rows: Vec<Row>  = self.dao.database().query(&sql, vec![]).await?;
+dbg!(&sql);
+        let rows: Vec<Row>  = self.dao.database().query(&sql, self.values).await?;
         
         self.dao.convert_rows_to_entitys(rows)
     }
@@ -538,8 +559,8 @@ pub async fn run(self) -> Result<Vec<T>, DbError> {
                 sql.push_str(&self.table.unwrap_or_else(|| self.dao.table()));
                 sql.push_str(" (");
                 sql.push_str(&self.columns.join(", "));
-                sql.push_str(") VALUES (");
-                sql.push_str(&self.values.join(", "));
+                // sql.push_str(") VALUES (");
+                // sql.push_str(&self.values.join(", "));
                 sql.push_str(")");
             }
             Some("UPDATE") => {

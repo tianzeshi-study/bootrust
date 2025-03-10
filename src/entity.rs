@@ -1,38 +1,36 @@
+use crate::sql_builder::SqlExecutor;
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
 use crate::serde::{EntityDeserializer,EntityConvertor};
-use serde::{de::Deserialize, ser::Serialize};
+use serde::{de::{Deserialize, DeserializeOwned}, Serialize};
 use std::io::Cursor;
-use std::marker::PhantomData;
+
+
+pub trait EntityData = 'static + Sized + Sync + Send + Serialize + DeserializeOwned+Clone;
 
 #[async_trait::async_trait]
-pub trait entity: Sized + Sync + Serialize + for<'de> Deserialize<'de>{
-
-    fn database(&self) -> &Self::Database;
-
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
-        self.database().placeholders(keys)
-    }
+pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de>{
 
 
-    fn new(database: Self::Database) -> Self;
 
-    fn row_to_entity(row: Row) -> Result<T, DbError> {
+
+
+    fn row_to_entity<T: EntityData>(row: Row) -> Result<T, DbError> {
         let de = EntityDeserializer::from_value(row.to_table());
         T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
     }
     
-    fn convert_row_to_entity(&self,  row: Row) ->Result<T, DbError> {
+    fn convert_row_to_entity<T: EntityData>(&self,  row: Row) ->Result<T, DbError> {
         Self::row_to_entity(row)
     } 
     
-fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
+fn convert_rows_to_entitys<T: EntityData>(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
     rows.into_iter()
         .map(|row|
         Self::row_to_entity(row)
         ).collect()
 }
 
-    fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
+    fn entity_to_map<T: EntityData>(entity: &T) -> Vec<(String, Value)> {
         let cursor = Cursor::new(Vec::new());
         let mut convertor = EntityConvertor::new(cursor);
         let result = entity.serialize(&mut convertor);
@@ -42,72 +40,53 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
         }
     }
     
-    fn convert_entity_to_table(&self, entity: &T) -> Value {
+    fn convert_entity_to_table<T: EntityData>(&self, entity: &T) -> Value {
         let map = Self::entity_to_map(entity);
         Value::Table(map)
     }
+    
+    fn table() -> String;
 
-    /// 将实体对象转换为数据库值
-    fn entity_to_values(&self, entity: &T) -> Vec<Value> {
-        Self::entity_to_map(entity)
-            .into_iter()
-            .map(|kv| kv.1)
-            .collect()
-    }
-
-    fn entity_to_keys(&self, entity: &T) -> Vec<String> {
-        Self::entity_to_map(entity)
-            .into_iter()
-            .map(|kv| kv.0)
-            .collect()
-    }
+    fn primary_key() -> String;
 
 
-    fn table_name() -> String;
+    async fn create<T: EntityData, D: RelationalDatabase>(db: &D, entity: &T) -> Result<u64, DbError> {
+        let map: Vec<(String, Value)>   = Self::entity_to_map(entity);
+        let (keys, values): (Vec<String>, Vec<Value>) = map.into_iter()
+        .unzip();
 
-    fn table(&self) -> String {
-        Self::table_name()
-    }
-
-
-    fn primary_key_column() -> String;
-
-
-    async fn create(&self, entity: &T) -> Result<u64, DbError> {
-        let values = self.entity_to_values(entity);
-        let keys = self.entity_to_keys(entity);
-        let placeholders: Vec<String> = self.placeholders(&keys);
+        let placeholders: Vec<String> = db.placeholders(&keys);
 
         let query = format!(
             "INSERT INTO {} VALUES ({})",
-            Self::table_name(),
+            Self::table(),
             placeholders.join(", ")
         );
 
-        self.database().execute(&query, values).await
+        db.execute(&query, values).await
     }
 
-    /// 根据ID查找记录
-    async fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
-        let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
+
+    async fn find_by_id<T: EntityData, D: RelationalDatabase>(db: &D, id: Value) -> Result<Option<T>, DbError> {
+        let placeholder = db.placeholders(&vec![Self::primary_key()])[0].clone();
         let query = format!(
             "SELECT * FROM {} WHERE {} = {}",
-            Self::table_name(),
-            Self::primary_key_column(),
+            Self::table(),
+            Self::primary_key(),
             placeholder
         );
 
-        let result = self.database().query_one(&query, vec![id]).await?;
+        let result = db.query_one(&query, vec![id]).await?;
         match result {
             Some(row) => Ok(Some(Self::row_to_entity(row)?)),
             None => Ok(None),
         }
     }
 
-    /// 查找所有记录
-    async fn find_all(&self) -> Result<Vec<T>, DbError> {
-        let query = format!("SELECT * FROM {}", Self::table_name());
-        let rows = self.database().query(&query, vec![]).await?;
+
+    async fn find_all<T: EntityData, D: RelationalDatabase>(db:& D) -> Result<Vec<T>, DbError> {
+        let query = format!("SELECT * FROM {}", Self::table());
+        let rows = db.query(&query, vec![]).await?;
 
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
@@ -116,23 +95,24 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
         Ok(entities)
     }
 
-    /// 更新记录
-    async fn update(&self, entity: &T) -> Result<u64, DbError> {
-        let map = Self::entity_to_map(entity);
+
+    async fn update<T: EntityData, D: RelationalDatabase>(db: &D, entity: &T) -> Result<u64, DbError> {
+        let map: Vec<(String, Value)>   = Self::entity_to_map(entity);
         let mut values: Vec<Value> = Vec::new();
+
 
         let mut primary_value = None;
         let update_columns: Vec<String> = map
             .iter()
             .inspect(|kv| {
-                if kv.0 == Self::primary_key_column() {
+                if kv.0 == Self::primary_key() {
                     primary_value = Some(kv.1.clone());
                 }
             })
-            .filter(|kv| kv.0 != Self::primary_key_column())
+            .filter(|kv| kv.0 != Self::primary_key())
             .enumerate()
             .map(|(i, kv)| {
-                let placeholder = self.placeholders(&vec![kv.0.clone(); i + 1])[i].clone();
+                let placeholder = db.placeholders(&vec![kv.0.clone(); i + 1])[i].clone();
 
                 values.push(kv.1.clone());
                 format!("{} = {}", kv.0, placeholder)
@@ -145,39 +125,46 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
 
         let query = format!(
             "UPDATE {} SET {} WHERE {} = {}",
-            Self::table_name(),
+            Self::table(),
             update_columns.join(", "),
-            Self::primary_key_column(),
-            self.placeholders(&vec![Self::primary_key_column(); values.len()])[values.len() - 1]
+            Self::primary_key(),
+            db.placeholders(&vec![Self::primary_key(); values.len()])[values.len() - 1]
                 .clone(),
         );
 
         dbg!(&query);
-        self.database().execute(&query, values).await
+        db.execute(&query, values).await
     }
 
-    /// 删除记录
-    async fn delete(&self, id: Value) -> Result<u64, DbError> {
-        let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
+
+    async fn delete<T: EntityData, D: RelationalDatabase>(db: &D, id: Value) -> Result<u64, DbError> {
+        let placeholder = db.placeholders(&vec![Self::primary_key()])[0].clone();
         let query = format!(
             "DELETE FROM {} WHERE {} = {}",
-            Self::table_name(),
-            Self::primary_key_column(),
+            Self::table(),
+            Self::primary_key(),
             placeholder
         );
 
-        self.database().execute(&query, vec![id]).await
+        db.execute(&query, vec![id]).await
     }
 
-    /// 自定义条件查询
-    async fn find_by_condition(
-        &self,
-        condition: &str,
+
+    async fn find_by_condition<T: EntityData, D: RelationalDatabase>(
+        db: &D,
+        condition: Vec<&str>,
         params: Vec<Value>,
     ) -> Result<Vec<T>, DbError> {
-        let query = format!("SELECT * FROM {} WHERE {}", Self::table_name(), condition);
+        let  conditions: Vec<String>  = condition.iter().map(|s| s.to_string()).collect();
+        let placeholders = db.placeholders(&conditions);
+        let where_condition: String =  conditions.iter()
+        .enumerate()
+        .map(|(i, c)| format!("{} {}", c,  placeholders[i]))
+        .collect::<Vec<String>>()
+        .join(" AND ");
+        let query = format!("SELECT * FROM {} WHERE {}", Self::table(), where_condition);
 
-        let rows = self.database().query(&query, params).await?;
+        let rows = db.query(&query, params).await?;
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
             entities.push(Self::row_to_entity(row)?);
@@ -185,60 +172,22 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
         Ok(entities)
     }
 
-    async fn begin_transaction(&self) -> Result<(), DbError> {
-        self.database().begin_transaction().await
+    async fn begin_transaction<D: RelationalDatabase>(db: &D) -> Result<(), DbError> {
+        db.begin_transaction().await
     }
 
-    async fn commit(&self) -> Result<(), DbError> {
-        self.database().commit().await
+    async fn commit<D: RelationalDatabase>(db: &D) -> Result<(), DbError> {
+        db.commit().await
     }
 
-    async fn rollback(&self) -> Result<(), DbError> {
-        self.database().rollback().await
+    async fn rollback<D: RelationalDatabase>(db: &D) -> Result<(), DbError> {
+        db.rollback().await
     }
 
-    fn prepare(&self) -> SqlExecutor<Self, T> {
-        SqlExecutor::new(self)
-    }
+    fn prepare<D: RelationalDatabase, T: EntityData>(db: &D) -> SqlExecutor<D, T> {
+        SqlExecutor::new(&db, Self::table())
 }
 
-pub struct DataAccessory<T: Sized, D: RelationalDatabase> {
-    database: D,
-    _table: PhantomData<T>,
-}
-impl<T, D> Dao<T> for DataAccessory<T, D>
-where
-    T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
-    D: RelationalDatabase,
-{
-    type Database = D;
-    fn database(&self) -> &Self::Database {
-        &self.database
-    }
 
-    fn new(database: Self::Database) -> Self {
-        Self {
-            database,
-            _table: PhantomData,
-        }
-    }
-
-    
-    fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
-
-        let cursor = Cursor::new(Vec::new());
-        let mut convertor = EntityConvertor::new(cursor);
-        let result = entity.serialize(&mut convertor);
-        match result {
-            Ok(Value::Table(table)) => table,
-            _ => vec![("".to_string(), Value::Null)],
-        }
-    }
-    fn table_name() -> String {
-        "user".to_string()
-    }
-    fn primary_key_column() -> String {
-        "id".to_string()
-    }
 }
 

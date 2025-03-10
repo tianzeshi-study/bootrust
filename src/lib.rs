@@ -8,3 +8,5 @@ mod common;
 
 pub mod dao;
 pub mod database;
+pub mod entity;
+mod sql_builder;

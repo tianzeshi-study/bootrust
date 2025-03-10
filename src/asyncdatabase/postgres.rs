@@ -206,7 +206,7 @@ impl PostgresDatabase {
             let mut columns = Vec::new();
             let mut values = Vec::new();
             for (i, column) in row.columns().iter().enumerate() {
-                dbg!(&column);
+
                 columns.push(column.name().to_string());
                 // 根据列的类型进行值的转换
                 let value = match column.type_() {
