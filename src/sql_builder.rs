@@ -1,5 +1,5 @@
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
-use crate::serde::{EntityDeserializer,EntityConvertor};
+use crate::serde::EntityDeserializer;
 use serde::{de::Deserialize, ser::Serialize};
 use std::marker::PhantomData;
 
@@ -148,6 +148,7 @@ where
 
     pub fn update(mut self) -> Self {
         self.query_type = Some("UPDATE".to_string());
+        self.set_clauses = vec!["*".to_string()];
 
         self
     }
@@ -248,6 +249,7 @@ where
                     sql.push_str(" WHERE ");
                     sql.push_str(&self.where_clauses.join(" AND "));
                 }
+                
             }
 
             _ => {}

@@ -478,3 +478,38 @@ Payment::create(&db, &payment1).await.unwrap();
         assert_eq!(result[0].order_id, 2);
         dbg!(&result);
 }
+
+#[tokio::test]
+#[serial]
+async fn test_complex_delete() {
+    let db = setup_ecommerce_test_db().await;
+
+
+    // 创建测试订单
+    let order_id = 1;
+
+    // 进行支付
+    let mut payment = create_test_payment();
+    payment.order_id = order_id;
+    let result = Payment::create(&db, &payment).await;
+    assert!(result.is_ok());
+        let mut payment1 = create_test_payment();
+        payment1.amount =100.0;
+        payment1.id =2;
+payment1.order_id =2;         
+Payment::create(&db, &payment1).await.unwrap();        
+
+        let result: Vec<Payment> = Payment::prepare(&db)
+        .delete()
+        .where_clauses(vec!["id <", "order_id <", "amount >"])
+        .values(vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.00)])
+        .execute()
+        .await
+        .unwrap();
+        let left: Vec<Payment>  = Payment::find_all(&db)
+        .await
+        .unwrap();
+        assert_eq!(left.len(), 1);
+        assert_eq!(left[0].amount, 100.0);
+        dbg!(&result);
+}

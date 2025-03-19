@@ -40,7 +40,7 @@ pub enum DbError {
 }
 
 // 定义通用的数据库值类型
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum Value {
     Null,
     Table(Vec<(String, Value)>),
@@ -51,6 +51,7 @@ pub enum Value {
     Text(String),
     Varchar(String),
     Boolean(bool),
+    Byte(u8),
     Bytes(Vec<u8>),
     DateTime(chrono::DateTime<chrono::Utc>),
     // 其他数据类型...

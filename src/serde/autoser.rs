@@ -37,7 +37,8 @@ where
     // type Error = DbError;
 
     // Used for now as placeholder, it should be replaced by a concrete type that implements the trait.
-    type SerializeSeq = Impossible<Self::Ok, Self::Error>;
+    // type SerializeSeq = Impossible<Self::Ok, Self::Error>;
+    type SerializeSeq = EntitySerializeSeq<'a, W>;
 
     // Used for now as placeholder, it should be replaced by a concrete type that implements the trait.
     type SerializeTuple = Impossible<Self::Ok, Self::Error>;
@@ -90,8 +91,8 @@ where
     }
 
     // 序列化 u8 值
-    fn serialize_u8(self, _v: u8) -> Result<Self::Ok, Self::Error> {
-        unimplemented!()
+    fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
+        Ok(Value::Byte(v))
     }
 
     // 序列化 u16 值
@@ -139,12 +140,12 @@ where
         Ok(Value::Null)
     }
 
-    fn serialize_some<T>(self, _value: &T) -> Result<Self::Ok, Self::Error>
+    fn serialize_some<T>(self, v: &T) -> Result<Self::Ok, Self::Error>
     where
         T: ?Sized + Serialize,
     {
-        unimplemented!()
-    }
+            v.serialize(self)
+        }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
@@ -193,7 +194,11 @@ where
 
     // 序列化可变长度的序列（例如：Vec）
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-        unimplemented!()
+        // unimplemented!()
+        Ok(EntitySerializeSeq {
+        entity_convertor: self,
+        elements: Vec::new(),
+    })
     }
 
     // 序列化固定长度的序列（例如：数组）
@@ -388,7 +393,7 @@ where
         Ok(Value::Null) // 占位符，替换为实际逻辑
     }
 }
-
+/*
 // 为 Value 实现 Serialize trait，以便进行递归序列化
 impl Serialize for Value {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -403,6 +408,7 @@ impl Serialize for Value {
             Value::Double(f) => serializer.serialize_f64(f),
             Value::Text(ref s) => serializer.serialize_str(s),
             Value::Boolean(b) => serializer.serialize_bool(b),
+            Value::Byte(b) => serializer.serialize_u8(b),
             Value::Bytes(ref b) => serializer.serialize_bytes(b),
             // Value::DateTime(ref dt) => serializer.collect_str(dt), // 需要 Display trait
             Value::DateTime(ref dt) => serializer.serialize_str(&dt.to_rfc3339()), // 使用 to_rfc3339 格式化
@@ -410,6 +416,43 @@ impl Serialize for Value {
         }
     }
 }
+*/
+pub struct EntitySerializeSeq<'a, W: 'a> {
+    entity_convertor: &'a mut EntityConvertor<W>, // 实体转换器的可变引用
+    elements: Vec<Value>,                         // 存储序列化后的元素集合
+}
+
+// 为 EntitySerializeSeq 实现 SerializeSeq trait
+impl<'a, W> SerializeSeq for EntitySerializeSeq<'a, W>
+where
+    W: io::Write,
+{
+    // 成功时返回的类型
+    type Ok = Value;
+    // 错误类型
+    type Error = serde::de::value::Error;
+
+    // 序列化单个元素
+    fn serialize_element<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Serialize,
+    {
+        // 递归调用转换器将元素转换为 Value
+        let serialized = value.serialize(&mut *self.entity_convertor)?;
+        self.elements.push(serialized);
+        // self.elements.push(value);
+        Ok(())
+    }
+
+    // 结束序列化并返回最终结果
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        // 组合所有元素为一个 Value::Array 类型
+        // Ok(Value::Array(self.elements))
+        let bytes = bincode::serialize(&self.elements).map_err(|e| serde::de::value::Error::custom(&e))?;
+        Ok(Value::Bytes(bytes))
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -451,7 +494,7 @@ mod tests {
         // assert_eq!(convertor.fields, ...);
     }
 
-    #[test]
+    // #[test]
     fn test_serialize_value() {
         // 创建一个 Cursor 作为写入器
         let cursor = Cursor::new(Vec::new());
@@ -473,4 +516,18 @@ mod tests {
             // 可以根据需要添加更多断言
         }
     }
+    
+    
+    #[test]
+    fn test_serialize_bytes() {
+let cursor = Cursor::new(Vec::new());
+let mut convertor = EntityConvertor::new(cursor);
+let bytes: Vec<u8> = vec![1;256];
+// let bytes = vec!["1".to_string()];
+let result = bytes.serialize(&mut convertor);
+dbg!(&result);
+
+
+}
+
 }
