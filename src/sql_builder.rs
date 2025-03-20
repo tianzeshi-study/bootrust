@@ -228,7 +228,9 @@ where
                 sql.push_str(&self.table.unwrap());
                 sql.push_str(" (");
                 sql.push_str(&self.columns.join(", "));
-                // sql.push_str(") VALUES (");
+                sql.push_str(") VALUES (");
+                let placeholders= self.database.placeholders(&self.columns.iter().map(|s| s.to_string()).collect());
+                sql.push_str(&placeholders.join(", "));
                 // sql.push_str(&self.values.join(", "));
                 sql.push_str(")");
             }

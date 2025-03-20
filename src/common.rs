@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub struct DatabaseConfig {
     pub host: String,
     pub port: u16,
@@ -39,6 +41,17 @@ pub enum DbError {
     // 其他错误类型...
 }
 
+impl fmt::Display for DbError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DbError::ConnectionError(msg) => write!(f, "Connection error: {}", msg),
+            DbError::QueryError(msg) => write!(f, "Query error: {}", msg),
+            DbError::TransactionError(msg) => write!(f, "Transaction error: {}", msg),
+            DbError::PoolError(msg) => write!(f, "Pool error: {}", msg),
+            DbError::ConversionError(msg) => write!(f, "Conversion error: {}", msg),
+        }
+    }
+}
 // 定义通用的数据库值类型
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum Value {

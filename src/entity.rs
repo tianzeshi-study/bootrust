@@ -65,6 +65,37 @@ fn convert_rows_to_entitys<T: EntityData>(&self, rows: Vec<Row>) -> Result<Vec<T
 
         db.execute(&query, values).await
     }
+    
+    async fn create_without<T: EntityData, D: RelationalDatabase>(
+    db: &D,
+    entity: &T,
+    exclude_fields: Vec<&str>, // 传入要排除的字段
+) -> Result<u64, DbError> {
+    // 获取实体字段的键值对
+    let map: Vec<(String, Value)> = Self::entity_to_map(entity)
+        .into_iter()
+        // 过滤掉需要排除的字段
+        .filter(|(key, _)| !exclude_fields.contains(&key.as_str()))
+        .collect();
+
+    // 拆分为字段名和对应的值
+    let (keys, values): (Vec<String>, Vec<Value>) = map.into_iter().unzip();
+
+    // 生成 SQL 占位符
+    let placeholders: Vec<String> = db.placeholders(&keys);
+
+    // 生成 SQL 语句
+    let query = format!(
+        "INSERT INTO {} ({}) VALUES ({})",
+        Self::table(),
+        keys.join(", "), // 仅插入被保留的字段
+        placeholders.join(", ")
+    );
+
+    // 执行 SQL 语句
+    db.execute(&query, values).await
+}
+
 
 
     async fn find_by_id<T: EntityData, D: RelationalDatabase>(db: &D, id: Value) -> Result<Option<T>, DbError> {

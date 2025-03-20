@@ -112,6 +112,7 @@ impl RelationalDatabase for PostgresDatabase {
                 Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
                 Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
                 Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Null => &None::<i64> as &(dyn tokio_postgres::types::ToSql + Sync),  // 处理 NULL
                 // ... 其他 Value 类型的处理
                 _ => unimplemented!(),
             })
@@ -139,6 +140,7 @@ impl RelationalDatabase for PostgresDatabase {
                 Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
                 Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
                 Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Null => &None::<i64> as &(dyn tokio_postgres::types::ToSql + Sync),  // 处理 NULL
                 // ... 其他 Value 类型的处理
                 _ => unimplemented!(),
             })
@@ -167,6 +169,7 @@ impl RelationalDatabase for PostgresDatabase {
                 Value::Boolean(b) => b as &(dyn tokio_postgres::types::ToSql + Sync),
                 Value::Bytes(by) => by as &(dyn tokio_postgres::types::ToSql + Sync),
                 Value::DateTime(dt) => dt as &(dyn tokio_postgres::types::ToSql + Sync),
+                Value::Null => &None::<i64> as &(dyn tokio_postgres::types::ToSql + Sync),  // 处理 NULL
                 // ... 其他 Value 类型的处理
                 _ => unimplemented!(),
             })

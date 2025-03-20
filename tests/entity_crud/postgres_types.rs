@@ -117,5 +117,5 @@ async fn test_stock_update() {
     assert_eq!(updated_product.stock, 50);
     assert_eq!(updated_product.log, b"0".to_vec());
     assert_eq!(updated_product.history, vec!["0".to_string(), "1".to_string()]);
-    dbg!(&updated_product);
+
 }
