@@ -16,7 +16,9 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de>{
 
     fn row_to_entity<T: EntityData>(row: Row) -> Result<T, DbError> {
         let de = EntityDeserializer::from_value(row.to_table());
-        T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
+        dbg!(&de);
+        // T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
+        Ok(T::deserialize(de).unwrap())
     }
     
     fn convert_row_to_entity<T: EntityData>(&self,  row: Row) ->Result<T, DbError> {

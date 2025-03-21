@@ -19,7 +19,8 @@ struct Product {
     #[serde(with = "chrono::serde::ts_seconds")]
     created_at: DateTime<Utc>,
     log: Vec<u8>,
-    history: Vec<String>
+    history: Vec<String>,
+    // count: Option<i64>,
 }
 impl Entity for Product {
     fn table() -> String{
@@ -63,7 +64,7 @@ async fn setup_ecommerce_test_db() -> PostgresDatabase {
     .await
     .unwrap();
 
-            // log TEXT[] NOT NULL
+
 
 
     db
@@ -74,12 +75,14 @@ fn create_test_product() -> Product {
     Product {
         id: 1,
         name: "Test Product".to_string(),
-        description: Some("This is a test product.".to_string()),
+        // description: Some("This is a test product.".to_string()),
+        description: None,
         price: 99.99,
         stock: 100,
         created_at: Utc::now(),
         log: b"0".to_vec(),
-        history: vec!["0".to_string(), "1".to_string()]
+        history: vec!["0".to_string(), "1".to_string()],
+        // count: None
     }
 }
 
