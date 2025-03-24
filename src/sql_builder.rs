@@ -202,7 +202,7 @@ let set_clauses: Vec<String> =  columns.iter()
     }
 
         /// 生成最终的 SQL 语句
-    pub async fn execute(self) -> Result<Vec<T>, DbError> {
+    pub async fn query(self) -> Result<Vec<T>, DbError> {
         let mut sql = String::new();
 
         match self.query_type.as_deref() {
@@ -290,7 +290,8 @@ dbg!(&sql);
     })
     .collect()
         }
-pub async fn execute1(self) -> Result<u64, DbError> {
+        
+pub async fn execute(self) -> Result<u64, DbError> {
         let mut sql = String::new();
 
         match self.query_type.as_deref() {

@@ -498,7 +498,7 @@ let saved_payment = payment_dao
         .group_by(vec!["id"])
         .having(vec!["order_id ="])
         .values(vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.00), Value::Bigint(2)])
-        .execute()
+        .query()
         .await
         .unwrap();
         assert_eq!(result.len(), 1);

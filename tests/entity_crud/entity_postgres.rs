@@ -471,7 +471,7 @@ Payment::create(&db, &payment1).await.unwrap();
         .group_by(vec!["id"])
         .having(vec!["order_id ="])
         .values(vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.00), Value::Bigint(2)])
-        .execute()
+        .query()
         .await
         .unwrap();
         assert_eq!(result.len(), 1);
@@ -503,7 +503,7 @@ Payment::create(&db, &payment1).await.unwrap();
         .delete()
         .where_clauses(vec!["id <", "order_id <", "amount >"])
         .values(vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.00)])
-        .execute()
+        .query()
         .await
         .unwrap();
         let left: Vec<Payment>  = Payment::find_all(&db)
