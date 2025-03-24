@@ -68,6 +68,20 @@ where
 
     /// 设定 WHERE 条件
     pub fn where_clauses(mut self, condition: Vec<&str>) -> Self {
+        match self.query_type.as_deref() {
+Some("UPDATE") => {
+    let  conditions: Vec<String>  = condition.iter().map(|s| s.to_string()).collect();
+        let total: Vec<String> = self.set_clauses.iter().cloned().chain(conditions.iter().cloned()).collect();
+        let placeholders = self.database.placeholders(&total);
+        let where_clauses =  conditions.iter()
+        .enumerate()
+        .map(|(i, c)| format!("{} {}", c,  placeholders[&self.where_clauses.len() + i]))
+        .collect::<Vec<String>>();
+        
+        self.where_clauses = where_clauses;
+        self
+},
+_ => {
         let  conditions: Vec<String>  = condition.iter().map(|s| s.to_string()).collect();
         let placeholders = self.database.placeholders(&conditions);
         let where_conditions: Vec<String> =  conditions.iter()
@@ -77,6 +91,8 @@ where
 
         self.where_clauses = where_conditions;
         self
+}
+        }
     }
 
     /// 添加 ORDER BY 语句
@@ -146,13 +162,20 @@ where
         self
     }
 
-    pub fn update(mut self) -> Self {
+    pub fn update(mut self, columns: &[&str]) -> Self {
         self.query_type = Some("UPDATE".to_string());
-        self.set_clauses = vec!["*".to_string()];
+        let placeholders= self.database.placeholders(&columns.iter().map(|s| s.to_string()).collect());
 
+let set_clauses: Vec<String> =  columns.iter()
+        .enumerate()
+        .map(|(i, c)| format!("{} = {}", c,  placeholders[i]))
+        .collect::<Vec<String>>();
+        self.set_clauses = set_clauses;
+        
+        // self.set_clauses = columns.iter().map(|s| s.to_string()).collect();
         self
     }
-
+    
     /// 设定 UPDATE 语句
     pub fn update_to(mut self, table: &str) -> Self {
         self.query_type = Some("UPDATE".to_string());
@@ -267,6 +290,86 @@ dbg!(&sql);
     })
     .collect()
         }
+pub async fn execute1(self) -> Result<u64, DbError> {
+        let mut sql = String::new();
+
+        match self.query_type.as_deref() {
+            Some("SELECT") => {
+                sql.push_str("SELECT ");
+                sql.push_str(&self.columns.join(", "));
+                sql.push_str(" FROM ");
+                sql.push_str(&self.table.unwrap());
+
+                if !self.joins.is_empty() {
+                    sql.push_str(" ");
+                    sql.push_str(&self.joins.join(" "));
+                }
+
+                if !self.where_clauses.is_empty() {
+                    sql.push_str(" WHERE ");
+                    sql.push_str(&self.where_clauses.join(" AND "));
+                }
+
+                if !self.group_by.is_empty() {
+                    sql.push_str(" GROUP BY ");
+                    sql.push_str(&self.group_by.join(", "));
+                }
+
+                if !self.having.is_empty() {
+                    sql.push_str(" HAVING ");
+                    sql.push_str(&self.having.join(" AND "));
+                }
+
+                if !self.order_by.is_empty() {
+                    sql.push_str(" ORDER BY ");
+                    sql.push_str(&self.order_by.join(", "));
+                }
+
+                if let Some(limit) = self.limit {
+                    sql.push_str(&format!(" LIMIT {}", limit));
+                }
+
+                if let Some(offset) = self.offset {
+                    sql.push_str(&format!(" OFFSET {}", offset));
+                }
+            }
+
+            Some("INSERT") => {
+                sql.push_str("INSERT INTO ");
+                sql.push_str(&self.table.unwrap());
+                sql.push_str(" (");
+                sql.push_str(&self.columns.join(", "));
+                sql.push_str(") VALUES (");
+                let placeholders= self.database.placeholders(&self.columns.iter().map(|s| s.to_string()).collect());
+                sql.push_str(&placeholders.join(", "));
+                // sql.push_str(&self.values.join(", "));
+                sql.push_str(")");
+            }
+            Some("UPDATE") => {
+                sql.push_str("UPDATE ");
+                sql.push_str(&self.table.unwrap());
+                sql.push_str(" SET ");
+                sql.push_str(&self.set_clauses.join(", "));
+                if !self.where_clauses.is_empty() {
+                    sql.push_str(" WHERE ");
+                    sql.push_str(&self.where_clauses.join(" AND "));
+                }
+            }
+            Some("DELETE") => {
+                sql.push_str("DELETE FROM ");
+                sql.push_str(&self.table.unwrap());
+                if !self.where_clauses.is_empty() {
+                    sql.push_str(" WHERE ");
+                    sql.push_str(&self.where_clauses.join(" AND "));
+                }
+                
+            }
+
+            _ => {}
+        }
+dbg!(&sql);
+        self.database.execute(&sql, self.values).await
+                }
 
 
 

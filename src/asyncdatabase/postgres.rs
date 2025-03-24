@@ -165,7 +165,8 @@ impl PostgresDatabase {
                     },
                     &tokio_postgres::types::Type::TEXT => {
                         let v: Option<String> =  row.get(i);
-                        Value::Text(v.unwrap_or("1900-01-01T00:00:00.000000000Z".to_string()))
+                        // Value::Text(v.unwrap_or("1900-01-01T00:00:00.000000000Z".to_string()))
+                        Value::Text(v.unwrap_or("".to_string()))
                 },
                     &tokio_postgres::types::Type::VARCHAR => Value::Text(row.get(i)),
                     &tokio_postgres::types::Type::BPCHAR=>  Value::Text(row.get(i)),
