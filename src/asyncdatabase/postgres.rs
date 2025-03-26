@@ -1,4 +1,4 @@
-use crate::asyncdatabase::{DatabaseConfig, DbError, RelationalDatabase, Row, Value};
+use crate::asyncdatabase::{DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value};
 use async_trait::async_trait;
 use bb8::Pool;
 use bb8_postgres::PostgresConnectionManager;
@@ -96,6 +96,7 @@ impl RelationalDatabase for PostgresDatabase {
     }
 
     async fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
+
         let conn = self
             .pool
             .get()
@@ -106,10 +107,48 @@ impl RelationalDatabase for PostgresDatabase {
 
         let params = Self::params_to_postgres(&params);
 
-        conn.execute(query, &params[..])
-            .await
-            .map_err(|e| DbError::QueryError(e.to_string()))
-    }
+        let stmt = conn.prepare(&query).await?;
+    conn.execute(&stmt, &params).await.map_err(|e| {
+
+
+        if let Some(db_err) = e.as_db_error() {
+            match db_err.code().code() {
+                "23503" => {
+                    // 外键约束错误
+                    DbError::QueryError(QueryErrorKind::ForeignKeyViolation(db_err.message().to_string()))
+                }
+                "23505" => {
+                    // 唯一约束错误（包括主键冲突）
+                    DbError::QueryError(QueryErrorKind::UniqueViolation(db_err.message().to_string()))
+                }
+                "23502" => {
+                    // 非空约束错误
+                    DbError::QueryError(QueryErrorKind::NotNullViolation(db_err.message().to_string()))
+                }
+                "23514" => {
+                    // 检查约束错误
+                    DbError::QueryError(QueryErrorKind::CheckViolation(db_err.message().to_string()))
+                }
+                "23P01" => {
+                    // 排他约束错误
+                    DbError::QueryError(QueryErrorKind::ExclusionViolation(db_err.message().to_string()))
+                }
+                _ => {
+                    // 其他数据库错误
+                    DbError::QueryError(
+                    QueryErrorKind::Other(
+                    format!("code: {}, message: {}", db_err.code().code() , db_err.message().to_string())
+                    ))
+                }
+            }
+        } else {
+            // 如果不是数据库错误，比如 IO 错误等
+            DbError::QueryError(QueryErrorKind::Other(
+                        format!("message: {}",e.to_string())
+            ))
+        }
+    })
+}
 
     async fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
         let conn = self
@@ -118,11 +157,11 @@ impl RelationalDatabase for PostgresDatabase {
             .await
             .map_err(|e| DbError::PoolError(e.to_string()))?;
         let params = Self::params_to_postgres(&params);
-
+        let stmt = conn.prepare(&query).await?;
         let rows = conn
-            .query(query, &params[..])
+            .query(&stmt, &params[..])
             .await
-            .map_err(|e| DbError::QueryError(e.to_string()))?;
+            .map_err(|e| DbError::QueryError(e.to_string().into()))?;
         Ok(Self::convert_rows(rows))
     }
     async fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError> {
@@ -132,11 +171,12 @@ impl RelationalDatabase for PostgresDatabase {
             .await
             .map_err(|e| DbError::PoolError(e.to_string()))?;
         let params = Self::params_to_postgres(&params);
+        let stmt = conn.prepare(&query).await?;
 
         let row = conn
-            .query_opt(query, &params[..])
+            .query_opt(&stmt, &params[..])
             .await
-            .map_err(|e| DbError::QueryError(e.to_string()))?;
+            .map_err(|e| DbError::QueryError(e.to_string().into()))?;
         Ok(row
             .map(|r| Self::convert_rows(vec![r]))
             .and_then(|mut v| v.pop()))
@@ -179,8 +219,7 @@ impl PostgresDatabase {
                     },
                     &tokio_postgres::types::Type::VOID => Value::Null,
                                         // ... 其他类型的处理
-                    _ => {dbg!(row);
-                        unimplemented!()},
+                    _ => {                        unimplemented!()},
                 };
                 values.push(value);
             }

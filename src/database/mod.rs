@@ -5,7 +5,7 @@ pub mod postgres;
 #[cfg(feature = "sqlite")]
 pub mod sqlite;
 
-pub use crate::common::{Connection, DatabaseConfig, DbError, Row, Value};
+pub use crate::common::{Connection, DatabaseConfig, DbError, QueryErrorKind, Row, Value};
 
 #[cfg(all(not(feature = "full"), feature = "mysql"))]
 pub fn auto_config() -> mysql::MySqlDatabase {

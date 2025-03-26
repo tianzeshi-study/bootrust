@@ -1,4 +1,4 @@
-use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
+use crate::database::{Connection, DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value};
 use chrono::{DateTime, Utc};
 use postgres::{config::Config as PostgresConfig, NoTls};
 use r2d2::{Pool, PooledConnection};
@@ -119,7 +119,7 @@ impl PostgresDatabase {
 #[cfg(all(not(feature = "full"), feature = "postgresql"))]
 impl From<postgres::Error> for DbError {
     fn from(err: postgres::Error) -> DbError {
-        DbError::QueryError(err.to_string())
+        DbError::QueryError(err.to_string().into())
     }
 }
 
@@ -203,9 +203,48 @@ impl RelationalDatabase for PostgresDatabase {
             let stmt = conn.prepare(query)?;
             let params = Self::params_to_postgres(&params);
 
-            let rows_affected = conn.execute(&stmt, &params[..])?;
+            // let rows_affected = conn.execute(&stmt, &params[..])?;
 
-            Ok(rows_affected)
+            // Ok(rows_affected)
+                conn.execute(&stmt, &params).map_err(|e| {
+        if let Some(db_err) = e.as_db_error() {
+            match db_err.code().code() {
+                "23503" => {
+                    // 外键约束错误
+                    DbError::QueryError(QueryErrorKind::ForeignKeyViolation(db_err.message().to_string()))
+                }
+                "23505" => {
+                    // 唯一约束错误（包括主键冲突）
+                    DbError::QueryError(QueryErrorKind::UniqueViolation(db_err.message().to_string()))
+                }
+                "23502" => {
+                    // 非空约束错误
+                    DbError::QueryError(QueryErrorKind::NotNullViolation(db_err.message().to_string()))
+                }
+                "23514" => {
+                    // 检查约束错误
+                    DbError::QueryError(QueryErrorKind::CheckViolation(db_err.message().to_string()))
+                }
+                "23P01" => {
+                    // 排他约束错误
+                    DbError::QueryError(QueryErrorKind::ExclusionViolation(db_err.message().to_string()))
+                }
+                _ => {
+                    // 其他数据库错误
+                    DbError::QueryError(
+                    QueryErrorKind::Other(
+                    format!("code: {}, message: {}", db_err.code().code() , db_err.message().to_string())
+                    ))
+                }
+            }
+        } else {
+            // 如果不是数据库错误，比如 IO 错误等
+            DbError::QueryError(QueryErrorKind::Other(
+                        format!("message: {}",e.to_string())
+            ))
+        }
+    })
+
         })
     }
 

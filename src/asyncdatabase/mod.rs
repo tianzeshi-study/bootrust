@@ -5,7 +5,7 @@ pub mod postgres;
 #[cfg(feature = "sqlite_async")]
 pub mod sqlite;
 
-pub use crate::common::{Connection, DatabaseConfig, DbError, Row, Value};
+pub use crate::common::{Connection, DatabaseConfig, DbError, QueryErrorKind, Row, Value};
 use std::sync::Arc;
 
 #[async_trait::async_trait]

@@ -30,11 +30,42 @@ impl Default for DatabaseConfig {
     }
 }
 
+#[derive(Debug)]
+pub enum QueryErrorKind {
+    SyntaxError(String),
+    ForeignKeyViolation(String),
+    UniqueViolation(String),
+    NotNullViolation(String),
+    CheckViolation(String),
+    ExclusionViolation(String),
+    Other(String),
+}
+
+impl From<String> for QueryErrorKind {
+    fn from(s: String) -> Self {
+        QueryErrorKind::Other(s)
+    }
+}
+
+impl fmt::Display for QueryErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            QueryErrorKind::SyntaxError(msg) => write!(f, "syntax  error: {}", msg),
+QueryErrorKind::ForeignKeyViolation(msg) => write!(f, "ForeignKeyViolation: {}", msg),
+QueryErrorKind::UniqueViolation(msg) => write!(f, "UniqueViolation: {}", msg),
+QueryErrorKind::NotNullViolation(msg) => write!(f, "NotNullViolation: {}", msg),
+QueryErrorKind::CheckViolation(msg) => write!(f, "CheckViolation: {}", msg),
+QueryErrorKind::ExclusionViolation(msg) => write!(f, "ExclusionViolation: {}", msg),
+QueryErrorKind::Other(msg) => write!(f, "Pool error: {}", msg),
+        }
+    }
+}
+
 // 定义通用的数据库错误类型
 #[derive(Debug)]
 pub enum DbError {
     ConnectionError(String),
-    QueryError(String),
+    QueryError(QueryErrorKind),
     TransactionError(String),
     PoolError(String),
     ConversionError(String),

@@ -148,7 +148,7 @@ impl RelationalDatabase for SqliteDatabase {
 
             conn.execute(query, rusqlite::params_from_iter(params.iter()))
                 .map(|rows| rows as u64)
-                .map_err(|e| DbError::QueryError(e.to_string()))
+                .map_err(|e| DbError::QueryError(e.to_string().into()))
         })
     }
 
@@ -156,7 +156,7 @@ impl RelationalDatabase for SqliteDatabase {
         self.execute_with_connection(|conn| {
             let mut stmt = conn
                 .prepare(query)
-                .map_err(|e| DbError::QueryError(e.to_string()))?;
+                .map_err(|e| DbError::QueryError(e.to_string().into()))?;
 
             let column_names: Vec<String> = stmt
                 .column_names()
@@ -194,11 +194,11 @@ impl RelationalDatabase for SqliteDatabase {
                         values,
                     })
                 })
-                .map_err(|e| DbError::QueryError(e.to_string()))?;
+                .map_err(|e| DbError::QueryError(e.to_string().into()))?;
 
             let mut results = Vec::new();
             for row in rows {
-                results.push(row.map_err(|e| DbError::QueryError(e.to_string()))?);
+                results.push(row.map_err(|e| DbError::QueryError(e.to_string().into()))?);
             }
             Ok(results)
         })

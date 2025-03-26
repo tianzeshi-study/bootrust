@@ -1,4 +1,4 @@
-use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
+use crate::database::{Connection, DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value};
 use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
 use mysql::OptsBuilder;
 use r2d2::{Pool, PooledConnection};
@@ -176,10 +176,42 @@ impl RelationalDatabase for MySqlDatabase {
             let params: Vec<mysql::Value> =
                 params.iter().map(MySqlDatabase::value_to_mysql).collect();
 
-            conn.exec_drop(query, params)
-                .map_err(|e| DbError::QueryError(e.to_string()))?;
 
-            Ok(conn.affected_rows() as u64)
+
+            let stmt = conn.prep(query).map_err(|e| DbError::ConversionError(e.to_string()))?;
+
+            conn.exec_drop(&stmt, &params).map_err(|e| {
+            match e {
+                mysql::Error::MySqlError(ref mysql_err) => {
+                    // 获取 MySQL 错误码
+                    match mysql_err.code {
+                        1451 | 1452 => {
+                            // 外键约束错误
+                            DbError::QueryError(QueryErrorKind::ForeignKeyViolation(mysql_err.message.clone()))
+                        }
+                        1062 => {
+                            // 唯一约束错误
+                            DbError::QueryError(QueryErrorKind::UniqueViolation(mysql_err.message.clone()))
+                        }
+                        1048 => {
+                            // 非空约束错误
+                            DbError::QueryError(QueryErrorKind::NotNullViolation(mysql_err.message.clone()))
+                        }
+                        // 其他错误
+                        other_code => {
+                            DbError::QueryError(QueryErrorKind::Other(
+                                format!("code: {}, message: {}", other_code, mysql_err.message)
+                            ))
+                        }
+                    }
+                }
+                // 其他类型的错误（比如连接错误、IO错误等）
+                _ => {
+                    DbError::QueryError(QueryErrorKind::Other(format!("message: {}", e)))
+                }
+            }
+        });
+        Ok(conn.affected_rows() as u64)
         })
     }
 
@@ -187,15 +219,16 @@ impl RelationalDatabase for MySqlDatabase {
         self.execute_with_connection(|conn| {
             let params: Vec<mysql::Value> =
                 params.iter().map(MySqlDatabase::value_to_mysql).collect();
+                let stmt = conn.prep(query).map_err(|e| DbError::ConversionError(e.to_string()))?;
 
             let result = conn
-                .exec_map(query, params, |row: mysql::Row| {
+                .exec_map(&stmt, params, |row: mysql::Row| {
                     let mut values = Vec::new();
                     let columns = row.columns();
 
                     for (i, _column) in columns.iter().enumerate() {
                         let value = row.get(i).ok_or_else(|| {
-                            DbError::QueryError("Missing column value".to_string())
+                            DbError::QueryError("Missing column value".to_string().into())
                         })?;
                         values.push(Self::convert_mysql_to_value(value)?);
                     }
@@ -205,7 +238,7 @@ impl RelationalDatabase for MySqlDatabase {
                         values,
                     })
                 })
-                .map_err(|e| DbError::QueryError(e.to_string()))?;
+                .map_err(|e| DbError::QueryError(e.to_string().into()))?;
 
             let mut rows = Vec::new();
             for row_result in result {
