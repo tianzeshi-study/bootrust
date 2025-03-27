@@ -10,16 +10,16 @@ use std::io;
 #[derive(Debug)]
 // 实体转换器结构体
 pub struct EntityConvertor<W> {
-    writer: W,                    // 写入器
-    fields: Vec<(String, Value)>, // 字段集合
+    _writer: W,                    // 写入器
+    _fields: Vec<(String, Value)>, // 字段集合
 }
 
 // 为 EntityConvertor 实现构造函数
 impl<W> EntityConvertor<W> {
     pub fn new(writer: W) -> Self {
         EntityConvertor {
-            writer,
-            fields: Vec::new(),
+            _writer: writer,
+            _fields: Vec::new(),
         }
     }
 }
@@ -304,30 +304,7 @@ where
         _ => None,
     }
 }
-pub trait SerializeStructVariant {
-    /// 必须与我们的 `Serializer` 的 `Ok` 类型匹配。
-    type Ok;
 
-    /// 必须与我们的 `Serializer` 的 `Error` 类型匹配。
-    type Error: Error;
-
-    /// Serialize a struct variant field.
-    fn serialize_field<T>(&mut self, key: &'static str, value: &T) -> Result<(), Self::Error>
-    where
-        T: ?Sized + Serialize;
-
-    /// Indicate that a struct variant field has been skipped.
-    ///
-    /// The default implementation does nothing.
-    #[inline]
-    fn skip_field(&mut self, key: &'static str) -> Result<(), Self::Error> {
-        let _ = key;
-        Ok(())
-    }
-
-    /// Finish serializing a struct variant.
-    fn end(self) -> Result<Self::Ok, Self::Error>;
-}
 // 用于辅助序列化结构体的结构体
 pub struct EntitySerializeStruct<'a, W: 'a> {
     entity_convertor: &'a mut EntityConvertor<W>, // 实体转换器的可变引用
@@ -393,30 +370,7 @@ where
         Ok(Value::Null) // 占位符，替换为实际逻辑
     }
 }
-/*
-// 为 Value 实现 Serialize trait，以便进行递归序列化
-impl Serialize for Value {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match *self {
-            Value::Null => serializer.serialize_unit(),
-            Value::Int(i) => serializer.serialize_i32(i),
-            Value::Bigint(i) => serializer.serialize_i64(i),
-            Value::Float(f) => serializer.serialize_f32(f),
-            Value::Double(f) => serializer.serialize_f64(f),
-            Value::Text(ref s) => serializer.serialize_str(s),
-            Value::Boolean(b) => serializer.serialize_bool(b),
-            Value::Byte(b) => serializer.serialize_u8(b),
-            Value::Bytes(ref b) => serializer.serialize_bytes(b),
-            // Value::DateTime(ref dt) => serializer.collect_str(dt), // 需要 Display trait
-            Value::DateTime(ref dt) => serializer.serialize_str(&dt.to_rfc3339()), // 使用 to_rfc3339 格式化
-            _ => unimplemented!(),
-        }
-    }
-}
-*/
+
 pub struct EntitySerializeSeq<'a, W: 'a> {
     entity_convertor: &'a mut EntityConvertor<W>, // 实体转换器的可变引用
     elements: Vec<Value>,                         // 存储序列化后的元素集合

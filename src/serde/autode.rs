@@ -1,9 +1,9 @@
 use crate::asyncdatabase::Value;
-use serde::de::{self, Deserialize, DeserializeSeed, Deserializer, MapAccess, Visitor, SeqAccess};
+use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, Visitor, SeqAccess};
 // use serde::de::value::Error;
 use serde::de::value::Error as ValueError;
 use serde::de::Error;
-use std::fmt;
+
 
 // 反序列化器结构体
 #[derive(Debug)]
@@ -256,145 +256,6 @@ impl<'de> MapAccess<'de> for StructDeserializer {
         Some(self.fields.len())
     }
 }
-/*
-// 为 Value 实现 Deserialize trait (可选，但建议实现)
-impl<'de> Deserialize<'de> for Value {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct ValueVisitor;
-
-        impl<'de> Visitor<'de> for ValueVisitor {
-            type Value = Value;
-
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a valid Value")
-            }
-
-            fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Boolean(v))
-            }
-            
-            fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Byte(v))
-            }
-
-            fn visit_i32<E>(self, v: i32) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Int(v))
-            }
-            fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Bigint(v))
-            }
-            fn visit_f32<E>(self, v: f32) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Float(v))
-            }
-            fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Double(v))
-            }
-
-            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Text(v))
-            }
-            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Text(v.to_string()))
-            }
-
-            fn visit_bytes<E>(self, v: &[u8]) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Bytes(v.to_vec()))
-            }
-
-            fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Bytes(v))
-            }
-
-            fn visit_none<E>(self) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Null)
-            }
-
-            fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-            where
-                D: Deserializer<'de>,
-            {
-                Deserialize::deserialize(deserializer)
-            }
-
-            fn visit_unit<E>(self) -> Result<Self::Value, E>
-            where
-                E: de::Error,
-            {
-                Ok(Value::Null)
-            }
-            fn visit_map<M>(self, mut access: M) -> Result<Self::Value, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                let mut fields = Vec::new();
-                while let Some(key) = access.next_key::<String>()? {
-                    let value = access.next_value::<Value>()?;
-
-                    fields.push((key, value));
-                }
-                Ok(Value::Table(fields))
-            }
-
-            // You can add other visit methods (e.g., visit_seq) if needed
-        }
-
-        deserializer.deserialize_any(ValueVisitor)
-    }
-}
-*/
-// Create a ByteBufVisitor to handle the byte buffer.
-struct ByteBufVisitor;
-
-impl Visitor<'_> for ByteBufVisitor {
-    type Value = Vec<u8>;
-
-    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a byte buffer")
-    }
-
-    fn visit_byte_buf<E>(self, v: Vec<u8>) -> Result<Self::Value, E>
-    where
-        E: de::Error,
-    {
-        Ok(v)
-    }
-}
 
 
 /// 用于序列反序列化的 SeqAccess 实现
@@ -488,18 +349,6 @@ mod tests {
         let value = Value::Bytes(vec![1, 2, 3]);
         let de = EntityDeserializer::from_value(value);
         let result = Vec::<u8>::deserialize(de).unwrap();
-        assert_eq!(result, vec![1, 2, 3]);
-    }
-
-    #[test]
-    fn test_deserialize_bytes() {
-        let value = Value::Bytes(vec![1, 2, 3]);
-        let de = EntityDeserializer::from_value(value);
-        // Use deserialize_byte_buf instead of directly calling Vec::<u8>::deserialize
-        // let result = Vec::<u8>::deserialize(de).unwrap();
-        // assert_eq!(result, vec![1, 2, 3]);
-
-        let result = de.deserialize_byte_buf(ByteBufVisitor {}).unwrap();
         assert_eq!(result, vec![1, 2, 3]);
     }
     #[test]

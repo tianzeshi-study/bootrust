@@ -250,9 +250,7 @@ impl PostgresDatabase {
             }
 }
 
-trait DynNone: tokio_postgres::types::ToSql{
-    
-}
+
 #[cfg(test)]
 mod tests {
     use super::*;

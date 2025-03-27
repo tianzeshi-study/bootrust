@@ -210,7 +210,7 @@ impl RelationalDatabase for MySqlDatabase {
                     DbError::QueryError(QueryErrorKind::Other(format!("message: {}", e)))
                 }
             }
-        });
+        })?;
         Ok(conn.affected_rows() as u64)
         })
     }
