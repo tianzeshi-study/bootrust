@@ -344,13 +344,7 @@ mod tests {
         assert_eq!(result, "hello");
     }
     
-    // #[test]
-    fn test_deserialize_bytes1() {
-        let value = Value::Bytes(vec![1, 2, 3]);
-        let de = EntityDeserializer::from_value(value);
-        let result = Vec::<u8>::deserialize(de).unwrap();
-        assert_eq!(result, vec![1, 2, 3]);
-    }
+
     #[test]
     fn test_deserialize_option_some() {
         let value = Value::Text("hello".to_string());
@@ -393,67 +387,4 @@ mod tests {
         );
     }
 
-    // #[test]
-    fn test_deserialize_datetime() {
-        use chrono::Utc;
-        let now = Utc::now();
-        let value = Value::DateTime(now);
-        let de = EntityDeserializer::from_value(value);
-        let result = String::deserialize(de).unwrap();
-        assert_eq!(result, now.to_rfc3339());
-    }
-
-    // #[test]
-    fn test_deserialize_value() {
-        let value = Value::Int(42);
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Int(42));
-
-        let value = Value::Bigint(42);
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Bigint(42));
-
-        let value = Value::Float(42.0);
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Float(42.0));
-
-        let value = Value::Double(42.0);
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Double(42.0));
-
-        let value = Value::Boolean(true);
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Boolean(true));
-
-        let value = Value::Text("test".to_string());
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Text("test".to_string()));
-
-        let value = Value::Bytes(vec![1, 2, 3]);
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Bytes(vec![1, 2, 3]));
-
-        let value = Value::Null;
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Null);
-    }
-    // #[test]
-    fn test_table() {
-        let fields = vec![
-            ("a".to_string(), Value::Int(42)),
-            ("b".to_string(), Value::Text("hello".to_string())),
-        ];
-        let value = Value::Table(fields.clone());
-        let de = EntityDeserializer::from_value(value);
-        let result = Value::deserialize(de).unwrap();
-        assert_eq!(result, Value::Table(fields));
-    }
 }

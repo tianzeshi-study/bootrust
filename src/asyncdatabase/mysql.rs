@@ -481,7 +481,7 @@ mod tests {
     #[tokio::test]
     #[serial]
     async fn test_value_conversion() {
-        let db = setup_test_db().await;
+        let _db = setup_test_db().await;
 
         let now = Utc::now();
         let mysql_now = MySqlDatabase::value_to_mysql(&Value::DateTime(now));

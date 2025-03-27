@@ -448,28 +448,7 @@ mod tests {
         // assert_eq!(convertor.fields, ...);
     }
 
-    // #[test]
-    fn test_serialize_value() {
-        // 创建一个 Cursor 作为写入器
-        let cursor = Cursor::new(Vec::new());
 
-        // 创建 EntityConvertor
-        let mut convertor = EntityConvertor::new(cursor);
-
-        // 测试各种 Value 类型的序列化
-        let values = vec![
-            Value::Int(42),
-            Value::Text("hello".to_string()),
-            Value::Boolean(true),
-            // 添加其他 Value 类型的测试用例
-        ];
-
-        for value in values {
-            let result = value.serialize(&mut convertor);
-            assert!(result.is_ok());
-            // 可以根据需要添加更多断言
-        }
-    }
     
     
     #[test]

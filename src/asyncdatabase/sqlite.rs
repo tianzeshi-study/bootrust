@@ -319,7 +319,7 @@ mod tests {
         )
         .await
         .unwrap();
-        &db.query("SELECT * FROM test", vec![]).await.unwrap();
+        db.query("SELECT * FROM test", vec![]).await.unwrap();
 
         // 测试成功的事务
         db.begin_transaction().await.unwrap();
