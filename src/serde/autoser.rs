@@ -1,7 +1,5 @@
 use serde::ser::Error;
-use serde::ser::{
-    Impossible, Serialize, SerializeMap, SerializeSeq, SerializeStruct, Serializer,
-};
+use serde::ser::{Impossible, Serialize, SerializeMap, SerializeSeq, SerializeStruct, Serializer};
 // use std::error::Error;
 use crate::asyncdatabase::Value;
 use std::fmt::Display;
@@ -144,8 +142,8 @@ where
     where
         T: ?Sized + Serialize,
     {
-            v.serialize(self)
-        }
+        v.serialize(self)
+    }
 
     fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
         unimplemented!()
@@ -196,9 +194,9 @@ where
     fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
         // unimplemented!()
         Ok(EntitySerializeSeq {
-        entity_convertor: self,
-        elements: Vec::new(),
-    })
+            entity_convertor: self,
+            elements: Vec::new(),
+        })
     }
 
     // 序列化固定长度的序列（例如：数组）
@@ -284,7 +282,6 @@ where
     where
         T: ?Sized + Display,
     {
-
         Ok(Value::Text(value.to_string()))
     }
 
@@ -402,11 +399,11 @@ where
     fn end(self) -> Result<Self::Ok, Self::Error> {
         // 组合所有元素为一个 Value::Array 类型
         // Ok(Value::Array(self.elements))
-        let bytes = bincode::serialize(&self.elements).map_err(|e| serde::de::value::Error::custom(&e))?;
+        let bytes =
+            bincode::serialize(&self.elements).map_err(|e| serde::de::value::Error::custom(&e))?;
         Ok(Value::Bytes(bytes))
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -448,19 +445,13 @@ mod tests {
         // assert_eq!(convertor.fields, ...);
     }
 
-
-    
-    
     #[test]
     fn test_serialize_bytes() {
-let cursor = Cursor::new(Vec::new());
-let mut convertor = EntityConvertor::new(cursor);
-let bytes: Vec<u8> = vec![1;256];
-// let bytes = vec!["1".to_string()];
-let result = bytes.serialize(&mut convertor);
-dbg!(&result);
-
-
-}
-
+        let cursor = Cursor::new(Vec::new());
+        let mut convertor = EntityConvertor::new(cursor);
+        let bytes: Vec<u8> = vec![1; 256];
+        // let bytes = vec!["1".to_string()];
+        let result = bytes.serialize(&mut convertor);
+        dbg!(&result);
+    }
 }

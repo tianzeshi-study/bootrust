@@ -566,7 +566,7 @@ fn test_transaction_rollback() {
     // 添加商品到购物车 (故意制造错误, 例如商品ID不存在)
     let mut cart_item = create_test_cart_item();
     cart_item.product_id = 999; // 不存在的商品ID
-    let result = cart_dao.create(&cart_item);
+    let _result = cart_dao.create(&cart_item);
     // assert!(result.is_err()); // 应该返回错误
 
     // 回滚事务

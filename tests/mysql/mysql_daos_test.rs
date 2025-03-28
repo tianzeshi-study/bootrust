@@ -824,7 +824,7 @@ fn test_multi_step_transaction_rollback() {
     let mut comment = create_test_comment();
     comment.user_id = user.id;
     comment.content = "".to_string(); // 评论内容为空
-    let result = comment_dao.create(&comment);
+    let _result = comment_dao.create(&comment);
     // assert!(result.is_err()); // 应该返回错误
 
     // 回滚事务

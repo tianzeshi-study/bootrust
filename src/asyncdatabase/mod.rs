@@ -9,7 +9,7 @@ pub use crate::common::{Connection, DatabaseConfig, DbError, QueryErrorKind, Row
 use std::sync::Arc;
 
 #[async_trait::async_trait]
-pub trait RelationalDatabase: Sync + Send +Clone {
+pub trait RelationalDatabase: Sync + Send + Clone {
     fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
     // 连接相关
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError>
@@ -53,57 +53,46 @@ pub async fn auto_config() -> sqlite::SqliteDatabase {
 
 #[async_trait::async_trait]
 impl<T: RelationalDatabase> RelationalDatabase for Arc<T> {
- 
-
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String>{
+    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
         (**self).placeholders(keys)
     }
     // 连接相关
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError>
     where
-        Self: Sized {
-            let db = T::connect(config).await?;
-            Ok(Arc::new(db))
-        }
-    async fn close(&self) -> Result<(), DbError>{
+        Self: Sized,
+    {
+        let db = T::connect(config).await?;
+        Ok(Arc::new(db))
+    }
+    async fn close(&self) -> Result<(), DbError> {
         (**self).close().await
     }
-    async fn ping(&self) -> Result<(), DbError>{
+    async fn ping(&self) -> Result<(), DbError> {
         (**self).ping().await
     }
 
     // 事务相关
-    async fn begin_transaction(&self) -> Result<(), DbError>{
+    async fn begin_transaction(&self) -> Result<(), DbError> {
         (**self).begin_transaction().await
     }
-    async fn commit(&self) -> Result<(), DbError>{
+    async fn commit(&self) -> Result<(), DbError> {
         (**self).commit().await
     }
-    async fn rollback(&self) -> Result<(), DbError>{
+    async fn rollback(&self) -> Result<(), DbError> {
         (**self).rollback().await
     }
 
     // 查询相关
-    async fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError>{
-
-(**self).execute(
-query,
-params
-).await
+    async fn execute(&self, query: &str, params: Vec<Value>) -> Result<u64, DbError> {
+        (**self).execute(query, params).await
     }
-    async fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError>{
-        (**self).query(
-query,
-params
-    ).await
+    async fn query(&self, query: &str, params: Vec<Value>) -> Result<Vec<Row>, DbError> {
+        (**self).query(query, params).await
     }
-    async fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError>{
-        (**self).query_one(
-query,
-params).await
+    async fn query_one(&self, query: &str, params: Vec<Value>) -> Result<Option<Row>, DbError> {
+        (**self).query_one(query, params).await
     }
     // 连接池相关
     // async fn get_connection(&self) -> Result<Connection, DbError>{self.get_connection().await}
-    // async fn release_connection(&self, conn: Connection) -> Result<(), DbError>{self.release_connection().await} 
+    // async fn release_connection(&self, conn: Connection) -> Result<(), DbError>{self.release_connection().await}
 }
-

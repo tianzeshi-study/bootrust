@@ -1,4 +1,6 @@
-use crate::database::{Connection, DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value};
+use crate::database::{
+    Connection, DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value,
+};
 use chrono::{DateTime, Utc};
 use postgres::{config::Config as PostgresConfig, NoTls};
 use r2d2::{Pool, PooledConnection};
@@ -40,6 +42,7 @@ impl PostgresDatabase {
                 Value::Boolean(b) => b as &(dyn postgres::types::ToSql + Sync),
                 Value::Bytes(by) => by as &(dyn postgres::types::ToSql + Sync),
                 Value::DateTime(dt) => dt as &(dyn postgres::types::ToSql + Sync),
+                Value::Null => &None::<&str> as &(dyn postgres::types::ToSql + Sync),
                 _ => unimplemented!(),
             })
             .collect::<Vec<_>>()
@@ -206,45 +209,56 @@ impl RelationalDatabase for PostgresDatabase {
             // let rows_affected = conn.execute(&stmt, &params[..])?;
 
             // Ok(rows_affected)
-                conn.execute(&stmt, &params).map_err(|e| {
-        if let Some(db_err) = e.as_db_error() {
-            match db_err.code().code() {
-                "23503" => {
-                    // 外键约束错误
-                    DbError::QueryError(QueryErrorKind::ForeignKeyViolation(db_err.message().to_string()))
+            conn.execute(&stmt, &params).map_err(|e| {
+                if let Some(db_err) = e.as_db_error() {
+                    match db_err.code().code() {
+                        "23503" => {
+                            // 外键约束错误
+                            DbError::QueryError(QueryErrorKind::ForeignKeyViolation(
+                                db_err.message().to_string(),
+                            ))
+                        }
+                        "23505" => {
+                            // 唯一约束错误（包括主键冲突）
+                            DbError::QueryError(QueryErrorKind::UniqueViolation(
+                                db_err.message().to_string(),
+                            ))
+                        }
+                        "23502" => {
+                            // 非空约束错误
+                            DbError::QueryError(QueryErrorKind::NotNullViolation(
+                                db_err.message().to_string(),
+                            ))
+                        }
+                        "23514" => {
+                            // 检查约束错误
+                            DbError::QueryError(QueryErrorKind::CheckViolation(
+                                db_err.message().to_string(),
+                            ))
+                        }
+                        "23P01" => {
+                            // 排他约束错误
+                            DbError::QueryError(QueryErrorKind::ExclusionViolation(
+                                db_err.message().to_string(),
+                            ))
+                        }
+                        _ => {
+                            // 其他数据库错误
+                            DbError::QueryError(QueryErrorKind::Other(format!(
+                                "code: {}, message: {}",
+                                db_err.code().code(),
+                                db_err.message().to_string()
+                            )))
+                        }
+                    }
+                } else {
+                    // 如果不是数据库错误，比如 IO 错误等
+                    DbError::QueryError(QueryErrorKind::Other(format!(
+                        "message: {}",
+                        e.to_string()
+                    )))
                 }
-                "23505" => {
-                    // 唯一约束错误（包括主键冲突）
-                    DbError::QueryError(QueryErrorKind::UniqueViolation(db_err.message().to_string()))
-                }
-                "23502" => {
-                    // 非空约束错误
-                    DbError::QueryError(QueryErrorKind::NotNullViolation(db_err.message().to_string()))
-                }
-                "23514" => {
-                    // 检查约束错误
-                    DbError::QueryError(QueryErrorKind::CheckViolation(db_err.message().to_string()))
-                }
-                "23P01" => {
-                    // 排他约束错误
-                    DbError::QueryError(QueryErrorKind::ExclusionViolation(db_err.message().to_string()))
-                }
-                _ => {
-                    // 其他数据库错误
-                    DbError::QueryError(
-                    QueryErrorKind::Other(
-                    format!("code: {}, message: {}", db_err.code().code() , db_err.message().to_string())
-                    ))
-                }
-            }
-        } else {
-            // 如果不是数据库错误，比如 IO 错误等
-            DbError::QueryError(QueryErrorKind::Other(
-                        format!("message: {}",e.to_string())
-            ))
-        }
-    })
-
+            })
         })
     }
 
@@ -477,4 +491,169 @@ mod tests {
 
         db.execute("DROP TABLE users", vec![]).unwrap();
     }
+    
+            #[test]
+    #[serial]
+    fn test_execute_foreign_key_violation() {
+        let db = setup_test_db();
+
+        // 创建父表和子表，子表中设置外键约束
+        db.execute("DROP TABLE IF EXISTS child", vec![]).unwrap();
+        db.execute("DROP TABLE IF EXISTS parent", vec![]).unwrap();
+        db.execute(
+            "CREATE TABLE parent (
+                id SERIAL PRIMARY KEY
+            )",
+            vec![],
+        )
+        
+        .unwrap();
+        db.execute(
+            "CREATE TABLE child (
+                id SERIAL PRIMARY KEY,
+                parent_id INT,
+                CONSTRAINT fk_parent FOREIGN KEY (parent_id) REFERENCES parent(id)
+            )",
+            vec![],
+        )
+        
+        .unwrap();
+
+        // 插入子表时，使用一个不存在的 parent_id 触发外键约束错误
+        let res = db
+            .execute(
+                "INSERT INTO child (parent_id) VALUES ($1)",
+                vec![Value::Int(9999)], // 假设9999不存在
+            )
+            ;
+        match res {
+            Err(DbError::QueryError(QueryErrorKind::ForeignKeyViolation(msg))) => {
+                println!("Foreign key violation error: {}", msg);
+            }
+            Err(e) => panic!("期望 ForeignKeyViolation, 但得到了其他错误: {:?}", e),
+            Ok(_) => panic!("期望错误, 但执行成功"),
+        }
+
+        // 清理表
+        db.execute("DROP TABLE child", vec![]).unwrap();
+        db.execute("DROP TABLE parent", vec![]).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_execute_unique_violation() {
+        let db = setup_test_db();
+
+        db.execute("DROP TABLE IF EXISTS unique_test", vec![])
+            
+            .unwrap();
+        db.execute(
+            "CREATE TABLE unique_test (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) UNIQUE
+            )",
+            vec![],
+        )
+        
+        .unwrap();
+
+        // 插入第一条数据
+        db.execute(
+            "INSERT INTO unique_test (name) VALUES ($1)",
+            vec![Value::Text("Alice".to_string())],
+        )
+        
+        .unwrap();
+        // 重复插入相同数据，触发唯一约束错误
+        let res = db
+            .execute(
+                "INSERT INTO unique_test (name) VALUES ($1)",
+                vec![Value::Text("Alice".to_string())],
+            )
+            ;
+        match res {
+            Err(DbError::QueryError(QueryErrorKind::UniqueViolation(msg))) => {
+                println!("Unique violation error: {}", msg);
+            }
+            Err(e) => panic!("期望 UniqueViolation, 但得到了其他错误: {:?}", e),
+            Ok(_) => panic!("期望错误, 但执行成功"),
+        }
+
+        db.execute("DROP TABLE unique_test", vec![]).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_execute_not_null_violation() {
+        let db = setup_test_db();
+
+        db.execute("DROP TABLE IF EXISTS notnull_test", vec![])
+            
+            .unwrap();
+        db.execute(
+            "CREATE TABLE notnull_test (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL
+            )",
+            vec![],
+        )
+        
+        .unwrap();
+
+        // 尝试插入 NULL 到 NOT NULL 列中
+        let res = db
+            .execute(
+                "INSERT INTO notnull_test (name) VALUES ($1)",
+                vec![Value::Null],
+            )
+            ;
+        match res {
+            Err(DbError::QueryError(QueryErrorKind::NotNullViolation(msg))) => {
+                println!("Not null violation error: {}", msg);
+            }
+            Err(e) => panic!("期望 NotNullViolation, 但得到了其他错误: {:?}", e),
+            Ok(_) => panic!("期望错误, 但执行成功"),
+        }
+
+        db.execute("DROP TABLE notnull_test", vec![]).unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_execute_check_violation() {
+        let db = setup_test_db();
+
+        db.execute("DROP TABLE IF EXISTS check_test", vec![])
+            
+            .unwrap();
+        db.execute(
+            "CREATE TABLE check_test (
+                id SERIAL PRIMARY KEY,
+                age INT,
+                CONSTRAINT age_positive CHECK (age > 0)
+            )",
+            vec![],
+        )
+        
+        .unwrap();
+
+        // 插入不满足 check 条件的数据
+        let res = db
+            .execute(
+                "INSERT INTO check_test (age) VALUES ($1)",
+                vec![Value::Int(0)],
+            )
+            ;
+        match res {
+            Err(DbError::QueryError(QueryErrorKind::CheckViolation(msg))) => {
+                println!("Check violation error: {}", msg);
+            }
+            Err(e) => panic!("期望 CheckViolation, 但得到了其他错误: {:?}", e),
+            Ok(_) => panic!("期望错误, 但执行成功"),
+        }
+
+        db.execute("DROP TABLE check_test", vec![]).unwrap();
+    }
+
+
 }

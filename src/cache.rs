@@ -6,7 +6,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::marker::PhantomData;
 use std::time::Duration;
 
-// data cache object 
+// data cache object
 #[async_trait]
 pub trait Dco<T>
 where
@@ -152,10 +152,14 @@ impl Redis {
     }
 }
 
-    pub async  fn auto_config() -> impl CacheDb {
-        Redis::new(&std::env::var("BOOTRUST_REDIS_URL").unwrap_or_else(|_| "redis://root@127.0.0.1:6379/1".to_string())).await.unwrap()
-    }
-
+pub async fn auto_config() -> impl CacheDb {
+    Redis::new(
+        &std::env::var("BOOTRUST_REDIS_URL")
+            .unwrap_or_else(|_| "redis://root@127.0.0.1:6379/1".to_string()),
+    )
+    .await
+    .unwrap()
+}
 
 #[async_trait]
 impl CacheDb for Redis {

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use bootrust::asyncdao::Dao;
 use bootrust::asyncdatabase::{
     postgres::PostgresDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
@@ -7,6 +6,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
 use std::marker::PhantomData;
+use std::sync::Arc;
 
 // 商品实体
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -579,7 +579,7 @@ async fn test_transaction_rollback() {
     let db = setup_ecommerce_test_db().await;
     let arc_db = Arc::new(db);
     let product_dao = ECommerceDo::new(Arc::clone(&arc_db));
-let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
+    let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
     // let product_dao = ECommerceDo::new(db.clone());
     // let cart_dao = ECommerceDo::new(db.clone());
 
@@ -595,7 +595,7 @@ let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
     // 添加商品到购物车 (故意制造错误, 例如商品ID不存在)
     let mut cart_item = create_test_cart_item();
     cart_item.product_id = 999; // 不存在的商品ID
-    let result = cart_dao.create(&cart_item);
+    let _result = cart_dao.create(&cart_item);
     // assert!(result.is_err()); // 应该返回错误
 
     // 回滚事务
@@ -623,14 +623,13 @@ async fn test_arc_db() {
     let arc_db = Arc::new(db);
     let product_dao = ECommerceDo::<Product, _>::new(Arc::clone(&arc_db));
 
-let product = create_test_product();
+    let product = create_test_product();
     product_dao.create(&product).await.unwrap();
 
-let added_item = product_dao
+    let added_item = product_dao
         .find_by_id(Value::Bigint(product.id))
         .await
         .unwrap();
     assert!(added_item.is_some());
     assert_eq!(added_item.unwrap().id, product.id);
-
 }

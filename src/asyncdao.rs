@@ -1,6 +1,6 @@
-use crate::sql_builder::SqlExecutor;
 use crate::asyncdatabase::{DbError, RelationalDatabase, Row, Value};
-use crate::serde::{EntityDeserializer,EntityConvertor};
+use crate::serde::{EntityConvertor, EntityDeserializer};
+use crate::sql_builder::SqlExecutor;
 use serde::{de::Deserialize, ser::Serialize};
 use std::io::Cursor;
 use std::marker::PhantomData;
@@ -27,17 +27,16 @@ where
         let de = EntityDeserializer::from_value(row.to_table());
         T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
     }
-    
-    fn convert_row_to_entity(&self,  row: Row) ->Result<T, DbError> {
+
+    fn convert_row_to_entity(&self, row: Row) -> Result<T, DbError> {
         Self::row_to_entity(row)
-    } 
-    
-fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
-    rows.into_iter()
-        .map(|row|
-        Self::row_to_entity(row)
-        ).collect()
-}
+    }
+
+    fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
+        rows.into_iter()
+            .map(|row| Self::row_to_entity(row))
+            .collect()
+    }
 
     fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
         let cursor = Cursor::new(Vec::new());
@@ -48,7 +47,7 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
             _ => vec![("".to_string(), Value::Null)],
         }
     }
-    
+
     fn convert_entity_to_table(&self, entity: &T) -> Value {
         let map = Self::entity_to_map(entity);
         Value::Table(map)
@@ -71,8 +70,6 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
 
     /// 获取表名
     fn table_name() -> String;
-
-
 
     /// 获取主键列名
     fn primary_key_column() -> String;
@@ -157,7 +154,6 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
                 .clone(),
         );
 
-
         self.database().execute(&query, values).await
     }
 
@@ -180,14 +176,19 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
         condition: Vec<&str>,
         params: Vec<Value>,
     ) -> Result<Vec<T>, DbError> {
-        let  conditions: Vec<String>  = condition.iter().map(|s| s.to_string()).collect();
+        let conditions: Vec<String> = condition.iter().map(|s| s.to_string()).collect();
         let placeholders = self.placeholders(&conditions);
-        let where_condition: String =  conditions.iter()
-        .enumerate()
-        .map(|(i, c)| format!("{} {}", c,  placeholders[i]))
-        .collect::<Vec<String>>()
-        .join(" AND ");
-        let query = format!("SELECT * FROM {} WHERE {}", Self::table_name(), where_condition);
+        let where_condition: String = conditions
+            .iter()
+            .enumerate()
+            .map(|(i, c)| format!("{} {}", c, placeholders[i]))
+            .collect::<Vec<String>>()
+            .join(" AND ");
+        let query = format!(
+            "SELECT * FROM {} WHERE {}",
+            Self::table_name(),
+            where_condition
+        );
 
         let rows = self.database().query(&query, params).await?;
         let mut entities = Vec::with_capacity(rows.len());
@@ -210,10 +211,7 @@ fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
     }
 
     fn prepare(&self) -> SqlExecutor<Self::Database, T> {
-        SqlExecutor::new(
-        self.database(),
-        Self::table_name()
-        )
+        SqlExecutor::new(self.database(), Self::table_name())
     }
 }
 
@@ -238,9 +236,7 @@ where
         }
     }
 
-    
     fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
-
         let cursor = Cursor::new(Vec::new());
         let mut convertor = EntityConvertor::new(cursor);
         let result = entity.serialize(&mut convertor);
@@ -256,4 +252,3 @@ where
         "id".to_string()
     }
 }
-

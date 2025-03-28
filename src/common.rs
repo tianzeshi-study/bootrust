@@ -51,12 +51,12 @@ impl fmt::Display for QueryErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             QueryErrorKind::SyntaxError(msg) => write!(f, "syntax  error: {}", msg),
-QueryErrorKind::ForeignKeyViolation(msg) => write!(f, "ForeignKeyViolation: {}", msg),
-QueryErrorKind::UniqueViolation(msg) => write!(f, "UniqueViolation: {}", msg),
-QueryErrorKind::NotNullViolation(msg) => write!(f, "NotNullViolation: {}", msg),
-QueryErrorKind::CheckViolation(msg) => write!(f, "CheckViolation: {}", msg),
-QueryErrorKind::ExclusionViolation(msg) => write!(f, "ExclusionViolation: {}", msg),
-QueryErrorKind::Other(msg) => write!(f, "Pool error: {}", msg),
+            QueryErrorKind::ForeignKeyViolation(msg) => write!(f, "ForeignKeyViolation: {}", msg),
+            QueryErrorKind::UniqueViolation(msg) => write!(f, "UniqueViolation: {}", msg),
+            QueryErrorKind::NotNullViolation(msg) => write!(f, "NotNullViolation: {}", msg),
+            QueryErrorKind::CheckViolation(msg) => write!(f, "CheckViolation: {}", msg),
+            QueryErrorKind::ExclusionViolation(msg) => write!(f, "ExclusionViolation: {}", msg),
+            QueryErrorKind::Other(msg) => write!(f, "Pool error: {}", msg),
         }
     }
 }
@@ -109,14 +109,14 @@ pub struct Row {
 }
 
 impl Row {
-    pub fn to_table(&self) ->Value {
+    pub fn to_table(&self) -> Value {
         let table: Vec<(String, Value)> = self
             .columns
             .iter()
             .enumerate()
             .map(|(i, s)| (s.clone(), self.values[i].clone()))
             .collect();
-            Value::Table(table)
+        Value::Table(table)
     }
 }
 

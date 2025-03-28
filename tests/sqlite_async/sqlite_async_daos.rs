@@ -1,11 +1,9 @@
-use std::sync::Arc;
 use bootrust::asyncdao::Dao;
-use bootrust::asyncdatabase::{
-    sqlite::SqliteDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
-};
+use bootrust::asyncdatabase::{sqlite::SqliteDatabase, DatabaseConfig, RelationalDatabase, Value};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use serial_test::serial;
+use std::sync::Arc;
+
 use std::marker::PhantomData;
 
 // 商品实体
@@ -123,7 +121,8 @@ async fn setup_ecommerce_test_db() -> SqliteDatabase {
     let config = DatabaseConfig {
         database_name: ":memory:".to_string(),
         ..Default::default()
-    };    let db = SqliteDatabase::connect(config).await.unwrap();
+    };
+    let db = SqliteDatabase::connect(config).await.unwrap();
 
     // 创建商品表
     db.execute("DROP TABLE IF EXISTS products", vec![])
@@ -393,7 +392,7 @@ async fn test_transaction_rollback() {
     let db = setup_ecommerce_test_db().await;
     let arc_db = Arc::new(db);
     let product_dao = ECommerceDo::new(Arc::clone(&arc_db));
-let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
+    let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
     // let product_dao = ECommerceDo::new(db.clone());
     // let cart_dao = ECommerceDo::new(db.clone());
 
@@ -409,7 +408,7 @@ let cart_dao = ECommerceDo::new(Arc::clone(&arc_db));
     // 添加商品到购物车 (故意制造错误, 例如商品ID不存在)
     let mut cart_item = create_test_cart_item();
     cart_item.product_id = 999; // 不存在的商品ID
-    let result = cart_dao.create(&cart_item);
+    let _result = cart_dao.create(&cart_item);
     // assert!(result.is_err()); // 应该返回错误
 
     // 回滚事务
@@ -436,16 +435,15 @@ async fn test_arc_db() {
     let arc_db = Arc::new(db);
     let product_dao = ECommerceDo::<Product, _>::new(Arc::clone(&arc_db));
 
-let product = create_test_product();
+    let product = create_test_product();
     product_dao.create(&product).await.unwrap();
 
-let added_item = product_dao
+    let added_item = product_dao
         .find_by_id(Value::Bigint(product.id))
         .await
         .unwrap();
     assert!(added_item.is_some());
     assert_eq!(added_item.unwrap().id, product.id);
-
 }
 
 #[tokio::test]
@@ -469,39 +467,49 @@ async fn test_complex_query() {
         .unwrap();
     assert!(saved_payment.is_some());
     assert_eq!(saved_payment.unwrap().order_id, order_id);
-    
+
     let saved_payment = payment_dao
         .find_by_condition(
-        vec!["id =", "order_id =", "amount <"],
-        vec![Value::Bigint(payment.id), Value::Bigint(payment.order_id), Value::Bigint(200)]
-        ).await
+            vec!["id =", "order_id =", "amount <"],
+            vec![
+                Value::Bigint(payment.id),
+                Value::Bigint(payment.order_id),
+                Value::Bigint(200),
+            ],
+        )
+        .await
         .unwrap();
-        assert_eq!(saved_payment[0].order_id, order_id);
-        let mut payment1 = create_test_payment();
-        payment1.amount =100.0;
-        payment1.id =2;
-payment1.order_id =2;        
-payment_dao.create(&payment1).await.unwrap();        
-let saved_payment = payment_dao
+    assert_eq!(saved_payment[0].order_id, order_id);
+    let mut payment1 = create_test_payment();
+    payment1.amount = 100.0;
+    payment1.id = 2;
+    payment1.order_id = 2;
+    payment_dao.create(&payment1).await.unwrap();
+    let saved_payment = payment_dao
         .find_by_condition(
-        vec!["id <", "order_id <", "amount >="],
-        vec![Value::Bigint(10), Value::Bigint(10), Value::Bigint(100)]
-        ).await
+            vec!["id <", "order_id <", "amount >="],
+            vec![Value::Bigint(10), Value::Bigint(10), Value::Bigint(100)],
+        )
+        .await
         .unwrap();
-        assert_eq!(saved_payment.len(), 2);
-        
-        let result = payment_dao
+    assert_eq!(saved_payment.len(), 2);
+
+    let result = payment_dao
         .prepare()
         .find()
         .where_clauses(vec!["id <", "order_id <", "amount >="])
         .order_by(vec!["amount  asc"])
         .group_by(vec!["id"])
         .having(vec!["order_id ="])
-        .values(vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.00), Value::Bigint(2)])
+        .values(vec![
+            Value::Bigint(10),
+            Value::Bigint(10),
+            Value::Double(100.00),
+            Value::Bigint(2),
+        ])
         .query()
         .await
         .unwrap();
-        assert_eq!(result.len(), 1);
-        assert_eq!(result[0].order_id, 2);
-
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].order_id, 2);
 }

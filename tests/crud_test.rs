@@ -1,3 +1,4 @@
+mod entity_crud;
 #[cfg(feature = "mysql")]
 mod mysql;
 #[cfg(feature = "postgresql")]
@@ -8,4 +9,3 @@ pub mod postgresql_async;
 mod sqlite;
 #[cfg(feature = "sqlite_async")]
 pub mod sqlite_async;
-mod entity_crud;

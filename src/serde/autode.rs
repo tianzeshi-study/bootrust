@@ -1,9 +1,8 @@
 use crate::asyncdatabase::Value;
-use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, Visitor, SeqAccess};
+use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, SeqAccess, Visitor};
 // use serde::de::value::Error;
 use serde::de::value::Error as ValueError;
 use serde::de::Error;
-
 
 // 反序列化器结构体
 #[derive(Debug)]
@@ -22,7 +21,7 @@ impl EntityDeserializer {
 impl<'de> Deserializer<'de> for EntityDeserializer {
     type Error = ValueError;
 
-fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -131,10 +130,7 @@ fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     {
         match self.value {
             Value::Table(fields) => {
-                let deserializer = StructDeserializer {
-                    fields,
-                    current: 0,
-                };
+                let deserializer = StructDeserializer { fields, current: 0 };
 
                 visitor.visit_map(deserializer)
             }
@@ -152,7 +148,7 @@ fn deserialize_u8<V>(self, visitor: V) -> Result<V::Value, Self::Error>
         }
     }
 
-fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
+    fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
     where
         V: Visitor<'de>,
     {
@@ -161,8 +157,8 @@ fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
                 // 使用 bincode 将字节反序列化为 Vec<Value>
                 dbg!(&bytes);
                 let vec_values: Vec<Value> = bincode::deserialize(bytes).unwrap();
-                    // .map_err(|e| de::Error::custom(&e.to_string()))?;
-                    dbg!(&vec_values);
+                // .map_err(|e| de::Error::custom(&e.to_string()))?;
+                dbg!(&vec_values);
                 // 构造自定义的 SeqAccess 实现
                 let seq_access = EntitySeqAccess::new(vec_values);
                 visitor.visit_seq(seq_access)
@@ -170,8 +166,6 @@ fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
             _ => Err(de::Error::custom("Expected Value::Bytes for sequence")),
         }
     }
-
-
 
     // 其他类型的反序列化...
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error>
@@ -189,14 +183,14 @@ fn deserialize_seq<V>(self, visitor: V) -> Result<V::Value, Self::Error>
             Value::Double(f) => visitor.visit_f64(f),
             Value::Text(s) => visitor.visit_string(s),
             Value::Bytes(b) => visitor.visit_byte_buf(b), // or visit_bytes
-            // Value::Bytes(b) => visitor.visit_bytes(&b), 
+            // Value::Bytes(b) => visitor.visit_bytes(&b),
             Value::Table(_) => self.deserialize_struct("", &[], visitor), // Treat Table as struct
             Value::DateTime(dt) => {
                 // Assuming you want to deserialize DateTime from a string
                 let s = dt.to_rfc3339();
                 visitor.visit_string(s)
             }
-            
+
             // Add other Value variants as needed
             _ => Err(Error::custom("Unsupported value type for deserialize_any")),
         }
@@ -256,7 +250,6 @@ impl<'de> MapAccess<'de> for StructDeserializer {
         Some(self.fields.len())
     }
 }
-
 
 /// 用于序列反序列化的 SeqAccess 实现
 pub struct EntitySeqAccess {
@@ -324,7 +317,7 @@ mod tests {
         let value = Value::Double(2.71828);
         let de = EntityDeserializer::from_value(value);
         let result = f64::deserialize(de).unwrap();
-        const F: f64 =2.71828; 
+        const F: f64 = 2.71828;
         assert_eq!(result, F);
     }
 
@@ -343,7 +336,6 @@ mod tests {
         let result = String::deserialize(de).unwrap();
         assert_eq!(result, "hello");
     }
-    
 
     #[test]
     fn test_deserialize_option_some() {
@@ -386,5 +378,4 @@ mod tests {
             }
         );
     }
-
 }

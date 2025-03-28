@@ -1,12 +1,10 @@
-use std::sync::Arc;
-use bootrust::{asyncdao::Dao, entity::Entity};
 use bootrust::asyncdatabase::{
-    postgres::PostgresDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
+    postgres::PostgresDatabase, DatabaseConfig, RelationalDatabase, Value,
 };
+use bootrust::entity::Entity;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serial_test::serial;
-use std::marker::PhantomData;
 
 // 商品实体
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -23,13 +21,13 @@ struct Product {
     // count: Option<i64>,
 }
 impl Entity for Product {
-    fn table() -> String{
+    fn table() -> String {
         "products".to_string()
     }
-    
-fn primary_key() -> String{
-    "id".to_string()
-}
+
+    fn primary_key() -> String {
+        "id".to_string()
+    }
 }
 
 // 设置测试数据库
@@ -63,9 +61,6 @@ async fn setup_ecommerce_test_db() -> PostgresDatabase {
     )
     .await
     .unwrap();
-
-
-
 
     db
 }
@@ -102,7 +97,6 @@ async fn test_entity_add_product_to_cart() {
 async fn test_stock_update() {
     let db = setup_ecommerce_test_db().await;
 
-
     // 创建测试商品
     let mut product = create_test_product();
     Product::create(&db, &product).await.unwrap();
@@ -119,6 +113,8 @@ async fn test_stock_update() {
         .unwrap();
     assert_eq!(updated_product.stock, 50);
     assert_eq!(updated_product.log, b"0".to_vec());
-    assert_eq!(updated_product.history, vec!["0".to_string(), "1".to_string()]);
-
+    assert_eq!(
+        updated_product.history,
+        vec!["0".to_string(), "1".to_string()]
+    );
 }

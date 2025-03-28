@@ -1,4 +1,6 @@
-use crate::asyncdatabase::{Connection, DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value};
+use crate::asyncdatabase::{
+    Connection, DatabaseConfig, DbError, QueryErrorKind, RelationalDatabase, Row, Value,
+};
 use async_trait::async_trait;
 use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
 use mysql::OptsBuilder;
@@ -193,40 +195,45 @@ impl RelationalDatabase for MySqlDatabase {
             let params: Vec<mysql::Value> =
                 params.iter().map(MySqlDatabase::value_to_mysql).collect();
 
-            let stmt = conn.prep(query).map_err(|e| DbError::ConversionError(e.to_string()))?;
+            let stmt = conn
+                .prep(query)
+                .map_err(|e| DbError::ConversionError(e.to_string()))?;
 
             conn.exec_drop(&stmt, &params).map_err(|e| {
-            match e {
-                mysql::Error::MySqlError(ref mysql_err) => {
-                    // 获取 MySQL 错误码
-                    match mysql_err.code {
-                        1451 | 1452 => {
-                            // 外键约束错误
-                            DbError::QueryError(QueryErrorKind::ForeignKeyViolation(mysql_err.message.clone()))
-                        }
-                        1062 => {
-                            // 唯一约束错误
-                            DbError::QueryError(QueryErrorKind::UniqueViolation(mysql_err.message.clone()))
-                        }
-                        1048 => {
-                            // 非空约束错误
-                            DbError::QueryError(QueryErrorKind::NotNullViolation(mysql_err.message.clone()))
-                        }
-                        // 其他错误
-                        other_code => {
-                            DbError::QueryError(QueryErrorKind::Other(
-                                format!("code: {}, message: {}", other_code, mysql_err.message)
-                            ))
+                match e {
+                    mysql::Error::MySqlError(ref mysql_err) => {
+                        // 获取 MySQL 错误码
+                        match mysql_err.code {
+                            1451 | 1452 => {
+                                // 外键约束错误
+                                DbError::QueryError(QueryErrorKind::ForeignKeyViolation(
+                                    mysql_err.message.clone(),
+                                ))
+                            }
+                            1062 => {
+                                // 唯一约束错误
+                                DbError::QueryError(QueryErrorKind::UniqueViolation(
+                                    mysql_err.message.clone(),
+                                ))
+                            }
+                            1048 => {
+                                // 非空约束错误
+                                DbError::QueryError(QueryErrorKind::NotNullViolation(
+                                    mysql_err.message.clone(),
+                                ))
+                            }
+                            // 其他错误
+                            other_code => DbError::QueryError(QueryErrorKind::Other(format!(
+                                "code: {}, message: {}",
+                                other_code, mysql_err.message
+                            ))),
                         }
                     }
+                    // 其他类型的错误（比如连接错误、IO错误等）
+                    _ => DbError::QueryError(QueryErrorKind::Other(format!("message: {}", e))),
                 }
-                // 其他类型的错误（比如连接错误、IO错误等）
-                _ => {
-                    DbError::QueryError(QueryErrorKind::Other(format!("message: {}", e)))
-                }
-            }
-        })?;
-        Ok(conn.affected_rows() as u64)
+            })?;
+            Ok(conn.affected_rows() as u64)
         })
         .await
     }
