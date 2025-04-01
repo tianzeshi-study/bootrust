@@ -36,7 +36,8 @@ impl MySqlDatabase {
             Value::Bigint(i) => MySqlValue::Int(*i),
             Value::Float(f) => MySqlValue::Float(*f as f32),
             Value::Double(f) => MySqlValue::Double(*f),
-            Value::Text(s) => MySqlValue::Bytes(s.clone().into_bytes()),
+            // Value::Text(s) => MySqlValue::Bytes(s.clone().into_bytes()),
+            Value::Text(s) => MySqlValue::from(s),
             Value::Boolean(b) => MySqlValue::Int(if *b { 1 } else { 0 }),
             Value::Bytes(b) => MySqlValue::from(b),
             Value::DateTime(dt) => MySqlValue::Date(
@@ -58,9 +59,7 @@ impl MySqlDatabase {
             MySqlValue::Int(i) => Ok(Value::Bigint(i)),
             MySqlValue::Float(f) => Ok(Value::Float(f)),
             MySqlValue::Double(f) => Ok(Value::Double(f)),
-            MySqlValue::Bytes(bytes) => Ok(Value::Text(
-                String::from_utf8(bytes).map_err(|e| DbError::ConversionError(e.to_string()))?,
-            )),
+            MySqlValue::Bytes(bytes) => Ok(Value::Bytes(bytes)),
             MySqlValue::Date(year, month, day, hour, minute, second, micros) => {
                 let naive = NaiveDateTime::new(
                     chrono::NaiveDate::from_ymd_opt(year as i32, month as u32, day as u32)
@@ -371,12 +370,12 @@ mod tests {
         assert_eq!(rows[0].columns, vec!["id", "name", "age", "created_at"]);
         assert_eq!(rows[0].values.len(), 4);
         assert!(matches!(rows[0].values[0], Value::Bigint(_)));
-        assert!(matches!(rows[0].values[1], Value::Text(_)));
+        assert!(matches!(rows[0].values[1], Value::Bytes(_)));
         assert!(matches!(rows[0].values[2], Value::Bigint(_)));
         assert!(matches!(rows[0].values[3], Value::DateTime(_)));
 
-        if let Value::Text(name) = &rows[0].values[1] {
-            assert_eq!(name, "Alice");
+        if let Value::Bytes(name) = &rows[0].values[1] {
+            assert_eq!(name, b"Alice");
         } else {
             panic!("Expected name to be a string");
         }
@@ -425,8 +424,8 @@ mod tests {
 
         if let Some(row) = row {
             assert_eq!(row.columns, vec!["id", "name"]);
-            if let Value::Text(name) = &row.values[1] {
-                assert_eq!(name, "Alice");
+            if let Value::Bytes(name) = &row.values[1] {
+                assert_eq!(name, b"Alice");
             } else {
                 panic!("Expected name to be a string");
             }

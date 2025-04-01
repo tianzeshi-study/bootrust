@@ -81,7 +81,7 @@ where
                 let where_clauses = conditions
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| format!("{} {}", c, placeholders[&self.where_clauses.len() + i]))
+                    .map(|(i, c)| format!("{} {}", c, placeholders[&conditions.len() + i]))
                     .collect::<Vec<String>>();
 
                 self.where_clauses = where_clauses;

@@ -259,7 +259,6 @@ mod tests {
     use chrono::Utc;
     use serial_test::serial;
 
-
     async fn setup_test_db() -> PostgresDatabase {
         let config = DatabaseConfig {
             host: "localhost".to_string(),
@@ -480,15 +479,19 @@ mod tests {
             assert!((dt.timestamp_micros() - now.timestamp_micros()).abs() <= 1);
         }
     }
-    
-        #[tokio::test]
+
+    #[tokio::test]
     #[serial]
     async fn test_execute_foreign_key_violation() {
         let db = setup_test_db().await;
 
         // 创建父表和子表，子表中设置外键约束
-        db.execute("DROP TABLE IF EXISTS child", vec![]).await.unwrap();
-        db.execute("DROP TABLE IF EXISTS parent", vec![]).await.unwrap();
+        db.execute("DROP TABLE IF EXISTS child", vec![])
+            .await
+            .unwrap();
+        db.execute("DROP TABLE IF EXISTS parent", vec![])
+            .await
+            .unwrap();
         db.execute(
             "CREATE TABLE parent (
                 id SERIAL PRIMARY KEY
@@ -643,8 +646,4 @@ mod tests {
 
         db.execute("DROP TABLE check_test", vec![]).await.unwrap();
     }
-
-
-
-   
 }

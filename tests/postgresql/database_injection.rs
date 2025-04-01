@@ -7,7 +7,7 @@ use serial_test::serial;
 use std::marker::PhantomData;
 
 // 商品实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Product {
     id: i64,
     name: String,
@@ -18,7 +18,7 @@ struct Product {
 }
 
 // 购物车实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct CartItem {
     id: i64,
     user_id: i64,
@@ -28,7 +28,7 @@ struct CartItem {
 }
 
 // 支付信息实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Payment {
     id: i64,
     order_id: i64,

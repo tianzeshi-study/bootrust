@@ -7,34 +7,37 @@ use serial_test::serial;
 use std::marker::PhantomData;
 
 // 商品实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Product {
     id: i64,
     name: String,
     description: String,
     price: f64,
     stock: i64,
+    #[serde(with = "chrono::serde::ts_seconds")]
     created_at: DateTime<Utc>,
 }
 
 // 购物车实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct CartItem {
     id: i64,
     user_id: i64,
     product_id: i64,
     quantity: i64,
+    #[serde(with = "chrono::serde::ts_seconds")]
     added_at: DateTime<Utc>,
 }
 
 // 支付信息实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Payment {
     id: i64,
     order_id: i64,
     amount: f64,
     payment_method: String,
     transaction_id: String,
+    #[serde(with = "chrono::serde::ts_seconds")]
     paid_at: DateTime<Utc>,
 }
 
@@ -56,63 +59,6 @@ impl Dao<Product> for ECommerceDo<Product> {
 
     fn database(&self) -> &Self::Database {
         &self.database
-    }
-
-    fn row_to_entity(row: Row) -> Result<Product, DbError> {
-        if row.values.len() != 6 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(Product {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            name: match &row.values[1] {
-                Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid name type".to_string())),
-            },
-            description: match &row.values[2] {
-                Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid description type".to_string(),
-                    ))
-                }
-            },
-            price: match &row.values[3] {
-                Value::Double(f) => *f,
-                _ => return Err(DbError::ConversionError("Invalid price type".to_string())),
-            },
-            stock: match &row.values[4] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid stock type".to_string())),
-            },
-            created_at: match &row.values[5] {
-                Value::DateTime(dt) => *dt,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid created_at type".to_string(),
-                    ))
-                }
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &Product) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("name".to_string(), Value::Text(entity.name.clone())));
-        map.push((
-            "description".to_string(),
-            Value::Text(entity.description.clone()),
-        ));
-        map.push(("price".to_string(), Value::Double(entity.price)));
-        map.push(("stock".to_string(), Value::Bigint(entity.stock)));
-        map.push(("created_at".to_string(), Value::DateTime(entity.created_at)));
-        map
     }
 
     fn table_name() -> String {
@@ -138,59 +84,6 @@ impl Dao<CartItem> for ECommerceDo<CartItem> {
         &self.database
     }
 
-    fn row_to_entity(row: Row) -> Result<CartItem, DbError> {
-        if row.values.len() != 5 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(CartItem {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            user_id: match &row.values[1] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
-            },
-            product_id: match &row.values[2] {
-                Value::Bigint(i) => *i,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid product_id type".to_string(),
-                    ))
-                }
-            },
-            quantity: match &row.values[3] {
-                Value::Bigint(i) => *i,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid quantity type".to_string(),
-                    ))
-                }
-            },
-            added_at: match &row.values[4] {
-                Value::DateTime(dt) => *dt,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid added_at type".to_string(),
-                    ))
-                }
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &CartItem) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
-        map.push(("product_id".to_string(), Value::Bigint(entity.product_id)));
-        map.push(("quantity".to_string(), Value::Bigint(entity.quantity)));
-        map.push(("added_at".to_string(), Value::DateTime(entity.added_at)));
-        map
-    }
-
     fn table_name() -> String {
         "cart_items".to_string()
     }
@@ -214,70 +107,6 @@ impl Dao<Payment> for ECommerceDo<Payment> {
         &self.database
     }
 
-    fn row_to_entity(row: Row) -> Result<Payment, DbError> {
-        if row.values.len() != 6 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(Payment {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            order_id: match &row.values[1] {
-                Value::Bigint(i) => *i,
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid order_id type".to_string(),
-                    ))
-                }
-            },
-            amount: match &row.values[2] {
-                Value::Double(f) => *f,
-                _ => return Err(DbError::ConversionError("Invalid amount type".to_string())),
-            },
-            payment_method: match &row.values[3] {
-                Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid payment_method type".to_string(),
-                    ))
-                }
-            },
-            transaction_id: match &row.values[4] {
-                Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid transaction_id type".to_string(),
-                    ))
-                }
-            },
-            paid_at: match &row.values[5] {
-                Value::DateTime(dt) => *dt,
-                _ => return Err(DbError::ConversionError("Invalid paid_at type".to_string())),
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &Payment) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("order_id".to_string(), Value::Bigint(entity.order_id)));
-        map.push(("amount".to_string(), Value::Double(entity.amount)));
-        map.push((
-            "payment_method".to_string(),
-            Value::Text(entity.payment_method.clone()),
-        ));
-        map.push((
-            "transaction_id".to_string(),
-            Value::Text(entity.transaction_id.clone()),
-        ));
-        map.push(("paid_at".to_string(), Value::DateTime(entity.paid_at)));
-        map
-    }
-
     fn table_name() -> String {
         "payments".to_string()
     }
@@ -288,13 +117,13 @@ impl Dao<Payment> for ECommerceDo<Payment> {
 }
 
 // 设置测试数据库
-fn setup_ecommerce_test_db() -> MySqlDatabase {
+fn setup_test_db() -> MySqlDatabase {
     let config = DatabaseConfig {
         host: "localhost".to_string(),
         port: 3306,
         username: "root".to_string(),
         password: "root".to_string(),
-        database_name: "ecommerce_test".to_string(),
+        database_name: "test".to_string(),
         max_size: 10,
     };
     let db = MySqlDatabase::connect(config).unwrap();
@@ -308,7 +137,7 @@ fn setup_ecommerce_test_db() -> MySqlDatabase {
             description TEXT,
             price DOUBLE NOT NULL,
             stock INTEGER NOT NULL,
-            created_at DATETIME NOT NULL
+            created_at INTEGER  NOT NULL
         )",
         vec![],
     )
@@ -323,7 +152,7 @@ fn setup_ecommerce_test_db() -> MySqlDatabase {
             user_id INTEGER NOT NULL,
             product_id INTEGER NOT NULL,
             quantity INTEGER NOT NULL,
-            added_at DATETIME NOT NULL
+            added_at INTEGER NOT NULL
         )",
         vec![],
     )
@@ -338,7 +167,7 @@ fn setup_ecommerce_test_db() -> MySqlDatabase {
             amount DOUBLE NOT NULL,
             payment_method TEXT NOT NULL,
             transaction_id TEXT NOT NULL,
-            paid_at DATETIME NOT NULL
+            paid_at INTEGER NOT NULL
         )",
         vec![],
     )
@@ -386,7 +215,7 @@ fn create_test_payment() -> Payment {
 #[test]
 #[serial]
 fn test_add_product_to_cart() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let product_dao = ECommerceDo::new(db.clone());
     let cart_dao = ECommerceDo::new(db.clone());
 
@@ -410,7 +239,7 @@ fn test_add_product_to_cart() {
 #[test]
 #[serial]
 fn test_remove_product_from_cart() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let cart_dao = ECommerceDo::new(db.clone());
 
     // 添加商品到购物车
@@ -430,7 +259,7 @@ fn test_remove_product_from_cart() {
 #[test]
 #[serial]
 fn test_update_cart_item_quantity() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let cart_dao = ECommerceDo::new(db.clone());
 
     // 添加商品到购物车
@@ -451,7 +280,7 @@ fn test_update_cart_item_quantity() {
 #[test]
 #[serial]
 fn test_payment_process() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let payment_dao = ECommerceDo::new(db.clone());
 
     // 创建测试订单
@@ -473,7 +302,7 @@ fn test_payment_process() {
 #[test]
 #[serial]
 fn test_stock_update() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let product_dao = ECommerceDo::new(db.clone());
 
     // 创建测试商品
@@ -494,7 +323,7 @@ fn test_stock_update() {
 #[test]
 #[serial]
 fn test_transaction() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let product_dao = ECommerceDo::new(db.clone());
     let cart_dao = ECommerceDo::new(db.clone());
     let payment_dao = ECommerceDo::new(db.clone());
@@ -538,7 +367,7 @@ fn test_transaction() {
 #[test]
 #[serial]
 fn test_transaction_rollback() {
-    let db = setup_ecommerce_test_db();
+    let db = setup_test_db();
     let product_dao = ECommerceDo::new(db.clone());
     let cart_dao = ECommerceDo::new(db.clone());
 

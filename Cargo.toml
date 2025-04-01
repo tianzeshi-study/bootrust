@@ -2,6 +2,12 @@
 name = "bootrust"
 version = "0.1.0"
 edition = "2021"
+authors = ["Hal Articode <halarticode@aiursoft.tech>"]
+categories = ["orm"]
+description = "An elegant macroless  data access layer abstraction, simple and easy-use  object-relational mapping powered by the Serde serialization framework. 一个优雅的无宏的数据访问层抽象, 由serde序列化框架提供支持的简单易用的对象关系映射"
+keywords = ["orm", "database", "data access", "serde"]
+license = "AGPL2.0"
+repository = "https://github.com/tianzeshi-study/bootrust"
 
 [dependencies]
 chrono = { version = "0.4.39", features = ["serde"] }
@@ -12,11 +18,7 @@ r2d2_sqlite = { version = "0.22", optional = true }
 mysql = { version = "23.0", optional = true }
 r2d2_mysql = { version = "23.0", optional = true }
 async-trait = "0.1.85"
-http = "1.2.0"
-axum = "0.8.1"
-tower-service = "0.3.3"
 tokio = {version = "1.43", features = ["sync", "macros", "rt", "rt-multi-thread", "signal"]}
-tower = "0.5.2"
 bb8-postgres = { version = "0.9.0", optional = true }
 bb8 = {version="0.9.0", optional = true }
 tokio-postgres = { version= "0.7.13", features = ["with-chrono-0_4"], optional = true }

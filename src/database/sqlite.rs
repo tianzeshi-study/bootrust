@@ -1,7 +1,7 @@
 use crate::database::{Connection, DatabaseConfig, DbError, RelationalDatabase, Row, Value};
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::{types::Type, ToSql};
+use rusqlite::ToSql;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone)]
@@ -38,11 +38,7 @@ impl SqliteDatabase {
             rusqlite::types::ValueRef::Text(s) => {
                 Ok(Value::Text(String::from_utf8_lossy(s).into_owned()))
             }
-            _ => Err(rusqlite::Error::InvalidColumnType(
-                0,
-                String::from("Unsupported type"),
-                Type::Null,
-            )),
+            rusqlite::types::ValueRef::Blob(b) => Ok(Value::Bytes(b.to_vec())),
         }
     }
 

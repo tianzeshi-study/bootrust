@@ -86,6 +86,7 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
     {
         match self.value {
             Value::Text(s) => visitor.visit_string(s),
+            Value::Bytes(s) => visitor.visit_bytes(&s),
             _ => Err(Error::custom("Expected string value")),
         }
     }
@@ -95,6 +96,7 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
     {
         match self.value {
             Value::Text(s) => visitor.visit_str(&s),
+            Value::Bytes(s) => visitor.visit_bytes(&s),
             _ => Err(Error::custom("Expected string value")),
         }
     }
@@ -185,12 +187,13 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
             Value::Bytes(b) => visitor.visit_byte_buf(b), // or visit_bytes
             // Value::Bytes(b) => visitor.visit_bytes(&b),
             Value::Table(_) => self.deserialize_struct("", &[], visitor), // Treat Table as struct
+            /*
             Value::DateTime(dt) => {
                 // Assuming you want to deserialize DateTime from a string
                 let s = dt.to_rfc3339();
                 visitor.visit_string(s)
             }
-
+            */
             // Add other Value variants as needed
             _ => Err(Error::custom("Unsupported value type for deserialize_any")),
         }

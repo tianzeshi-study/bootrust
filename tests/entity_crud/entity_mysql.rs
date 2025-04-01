@@ -13,7 +13,7 @@ struct Product {
     description: String,
     price: f64,
     stock: i64,
-    // #[serde(with = "chrono::serde::ts_seconds")]
+    #[serde(with = "chrono::serde::ts_seconds")]
     created_at: DateTime<Utc>,
 }
 impl Entity for Product {
@@ -32,7 +32,7 @@ struct CartItem {
     user_id: i64,
     product_id: i64,
     quantity: i64,
-    // #[serde(with = "chrono::serde::ts_seconds")]
+    #[serde(with = "chrono::serde::ts_seconds")]
     added_at: DateTime<Utc>,
 }
 
@@ -68,13 +68,13 @@ impl Entity for Payment {
 }
 
 // 设置测试数据库
-async fn setup_ecommerce_test_db() -> MySqlDatabase {
+async fn setup_test_db() -> MySqlDatabase {
     let config = DatabaseConfig {
         host: "localhost".to_string(),
         port: 3306,
         username: "root".to_string(),
         password: "root".to_string(),
-        database_name: "ecommerce_test".to_string(),
+        database_name: "test".to_string(),
         max_size: 10,
     };
     let db = MySqlDatabase::connect(config).await.unwrap();
@@ -90,8 +90,8 @@ async fn setup_ecommerce_test_db() -> MySqlDatabase {
             description TEXT,
             price DOUBLE NOT NULL,
             stock INTEGER NOT NULL,
-            -- created_at INTEGER NOT NULL
-            created_at TEXT NOT NULL
+            created_at Bigint NOT NULL
+            -- created_at TEXT NOT NULL
         )",
         vec![],
     )
@@ -108,8 +108,8 @@ async fn setup_ecommerce_test_db() -> MySqlDatabase {
             user_id INTEGER NOT NULL,
             product_id INTEGER NOT NULL,
             quantity INTEGER NOT NULL,
-            -- added_at INTEGER NOT NULL
-            added_at TEXT  NOT NULL
+            added_at INTEGER NOT NULL
+            -- added_at TEXT  NOT NULL
         )",
         vec![],
     )
@@ -177,7 +177,7 @@ fn create_test_payment() -> Payment {
 #[tokio::test]
 #[serial]
 async fn test_entity_add_product_to_cart() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
 
     // 创建测试商品
     let product = create_test_product();
@@ -203,7 +203,7 @@ async fn test_entity_add_product_to_cart() {
 #[tokio::test]
 #[serial]
 async fn test_remove_product_from_cart() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
     // 添加商品到购物车
     let cart_item = create_test_cart_item();
     CartItem::create(&db, &cart_item).await.unwrap();
@@ -224,7 +224,7 @@ async fn test_remove_product_from_cart() {
 #[tokio::test]
 #[serial]
 async fn test_update_cart_item_quantity() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
     // 添加商品到购物车
     let mut cart_item = create_test_cart_item();
     CartItem::create(&db, &cart_item).await.unwrap();
@@ -245,7 +245,7 @@ async fn test_update_cart_item_quantity() {
 #[tokio::test]
 #[serial]
 async fn test_payment_process() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
 
     // 创建测试订单
     let order_id = 1;
@@ -268,7 +268,7 @@ async fn test_payment_process() {
 #[tokio::test]
 #[serial]
 async fn test_stock_update() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
 
     // 创建测试商品
     let mut product = create_test_product();
@@ -290,7 +290,7 @@ async fn test_stock_update() {
 #[tokio::test]
 #[serial]
 async fn test_transaction() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
     // 开始事务
     let result = Product::begin_transaction(&db).await;
     assert!(result.is_ok());
@@ -336,7 +336,7 @@ async fn test_transaction() {
 #[tokio::test]
 #[serial]
 async fn test_transaction_rollback() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
     let _arc_db = Arc::new(&db);
 
     let result = Product::begin_transaction(&db).await;
@@ -372,7 +372,7 @@ async fn test_transaction_rollback() {
 #[tokio::test]
 #[serial]
 async fn test_arc_db() {
-    let db = setup_ecommerce_test_db().await;
+    let db = setup_test_db().await;
 
     let product = create_test_product();
     Product::create(&db, &product).await.unwrap();

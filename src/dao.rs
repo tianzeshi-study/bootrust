@@ -1,9 +1,13 @@
 use crate::database::{DbError, RelationalDatabase, Row, Value};
+use crate::serde::{EntityConvertor, EntityDeserializer};
+// use crate::sql_builder::SqlExecutor;
+use serde::{de::Deserialize, ser::Serialize};
+use std::io::Cursor;
 
 /// 通用的数据访问对象trait
-pub trait Dao<T>
+pub trait Dao<T>: Sized
 where
-    T: Sized,
+    T: Sized + Sync + Serialize + for<'de> Deserialize<'de>,
 {
     /// 关联的数据库类型
     type Database: RelationalDatabase;
@@ -18,9 +22,35 @@ where
     /// 创建新的 DAO 实例
     fn new(database: Self::Database) -> Self;
 
-    fn row_to_entity(row: Row) -> Result<T, DbError>;
+    fn row_to_entity(row: Row) -> Result<T, DbError> {
+        let de = EntityDeserializer::from_value(row.to_table());
+        T::deserialize(de).map_err(|e| DbError::ConversionError(e.to_string()))
+    }
 
-    fn entity_to_map(entity: &T) -> Vec<(String, Value)>;
+    fn convert_row_to_entity(&self, row: Row) -> Result<T, DbError> {
+        Self::row_to_entity(row)
+    }
+
+    fn convert_rows_to_entitys(&self, rows: Vec<Row>) -> Result<Vec<T>, DbError> {
+        rows.into_iter()
+            .map(|row| Self::row_to_entity(row))
+            .collect()
+    }
+
+    fn entity_to_map(entity: &T) -> Vec<(String, Value)> {
+        let cursor = Cursor::new(Vec::new());
+        let mut convertor = EntityConvertor::new(cursor);
+        let result = entity.serialize(&mut convertor);
+        match result {
+            Ok(Value::Table(table)) => table,
+            _ => vec![("".to_string(), Value::Null)],
+        }
+    }
+
+    fn convert_entity_to_table(&self, entity: &T) -> Value {
+        let map = Self::entity_to_map(entity);
+        Value::Table(map)
+    }
 
     /// 将实体对象转换为数据库值
     fn entity_to_values(&self, entity: &T) -> Vec<Value> {
@@ -47,11 +77,6 @@ where
     fn create(&self, entity: &T) -> Result<u64, DbError> {
         let values = self.entity_to_values(entity);
         let keys = self.entity_to_keys(entity);
-        // let placeholders: Vec<String> = (1..=values.len())
-        // .map(|i| format!("${}", i))
-        // .map(|i| "?".to_string() )
-        // .collect();
-
         let placeholders: Vec<String> = self.placeholders(&keys);
 
         let query = format!(
@@ -128,7 +153,6 @@ where
                 .clone(),
         );
 
-        dbg!(&query);
         self.database().execute(&query, values)
     }
 
@@ -146,8 +170,24 @@ where
     }
 
     /// 自定义条件查询
-    fn find_by_condition(&self, condition: &str, params: Vec<Value>) -> Result<Vec<T>, DbError> {
-        let query = format!("SELECT * FROM {} WHERE {}", Self::table_name(), condition);
+    fn find_by_condition(
+        &self,
+        condition: Vec<&str>,
+        params: Vec<Value>,
+    ) -> Result<Vec<T>, DbError> {
+        let conditions: Vec<String> = condition.iter().map(|s| s.to_string()).collect();
+        let placeholders = self.placeholders(&conditions);
+        let where_condition: String = conditions
+            .iter()
+            .enumerate()
+            .map(|(i, c)| format!("{} {}", c, placeholders[i]))
+            .collect::<Vec<String>>()
+            .join(" AND ");
+        let query = format!(
+            "SELECT * FROM {} WHERE {}",
+            Self::table_name(),
+            where_condition
+        );
 
         let rows = self.database().query(&query, params)?;
         let mut entities = Vec::with_capacity(rows.len());
@@ -168,4 +208,8 @@ where
     fn rollback(&self) -> Result<(), DbError> {
         self.database().rollback()
     }
+
+    // fn prepare(&self) -> SqlExecutor<Self::Database, T> {
+    // SqlExecutor::new(self.database(), Self::table_name())
+    // }
 }

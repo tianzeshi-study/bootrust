@@ -491,8 +491,8 @@ mod tests {
 
         db.execute("DROP TABLE users", vec![]).unwrap();
     }
-    
-            #[test]
+
+    #[test]
     #[serial]
     fn test_execute_foreign_key_violation() {
         let db = setup_test_db();
@@ -506,7 +506,6 @@ mod tests {
             )",
             vec![],
         )
-        
         .unwrap();
         db.execute(
             "CREATE TABLE child (
@@ -516,16 +515,13 @@ mod tests {
             )",
             vec![],
         )
-        
         .unwrap();
 
         // 插入子表时，使用一个不存在的 parent_id 触发外键约束错误
-        let res = db
-            .execute(
-                "INSERT INTO child (parent_id) VALUES ($1)",
-                vec![Value::Int(9999)], // 假设9999不存在
-            )
-            ;
+        let res = db.execute(
+            "INSERT INTO child (parent_id) VALUES ($1)",
+            vec![Value::Int(9999)], // 假设9999不存在
+        );
         match res {
             Err(DbError::QueryError(QueryErrorKind::ForeignKeyViolation(msg))) => {
                 println!("Foreign key violation error: {}", msg);
@@ -545,7 +541,6 @@ mod tests {
         let db = setup_test_db();
 
         db.execute("DROP TABLE IF EXISTS unique_test", vec![])
-            
             .unwrap();
         db.execute(
             "CREATE TABLE unique_test (
@@ -554,7 +549,6 @@ mod tests {
             )",
             vec![],
         )
-        
         .unwrap();
 
         // 插入第一条数据
@@ -562,15 +556,12 @@ mod tests {
             "INSERT INTO unique_test (name) VALUES ($1)",
             vec![Value::Text("Alice".to_string())],
         )
-        
         .unwrap();
         // 重复插入相同数据，触发唯一约束错误
-        let res = db
-            .execute(
-                "INSERT INTO unique_test (name) VALUES ($1)",
-                vec![Value::Text("Alice".to_string())],
-            )
-            ;
+        let res = db.execute(
+            "INSERT INTO unique_test (name) VALUES ($1)",
+            vec![Value::Text("Alice".to_string())],
+        );
         match res {
             Err(DbError::QueryError(QueryErrorKind::UniqueViolation(msg))) => {
                 println!("Unique violation error: {}", msg);
@@ -588,7 +579,6 @@ mod tests {
         let db = setup_test_db();
 
         db.execute("DROP TABLE IF EXISTS notnull_test", vec![])
-            
             .unwrap();
         db.execute(
             "CREATE TABLE notnull_test (
@@ -597,16 +587,13 @@ mod tests {
             )",
             vec![],
         )
-        
         .unwrap();
 
         // 尝试插入 NULL 到 NOT NULL 列中
-        let res = db
-            .execute(
-                "INSERT INTO notnull_test (name) VALUES ($1)",
-                vec![Value::Null],
-            )
-            ;
+        let res = db.execute(
+            "INSERT INTO notnull_test (name) VALUES ($1)",
+            vec![Value::Null],
+        );
         match res {
             Err(DbError::QueryError(QueryErrorKind::NotNullViolation(msg))) => {
                 println!("Not null violation error: {}", msg);
@@ -624,7 +611,6 @@ mod tests {
         let db = setup_test_db();
 
         db.execute("DROP TABLE IF EXISTS check_test", vec![])
-            
             .unwrap();
         db.execute(
             "CREATE TABLE check_test (
@@ -634,16 +620,13 @@ mod tests {
             )",
             vec![],
         )
-        
         .unwrap();
 
         // 插入不满足 check 条件的数据
-        let res = db
-            .execute(
-                "INSERT INTO check_test (age) VALUES ($1)",
-                vec![Value::Int(0)],
-            )
-            ;
+        let res = db.execute(
+            "INSERT INTO check_test (age) VALUES ($1)",
+            vec![Value::Int(0)],
+        );
         match res {
             Err(DbError::QueryError(QueryErrorKind::CheckViolation(msg))) => {
                 println!("Check violation error: {}", msg);
@@ -654,6 +637,4 @@ mod tests {
 
         db.execute("DROP TABLE check_test", vec![]).unwrap();
     }
-
-
 }

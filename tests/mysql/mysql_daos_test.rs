@@ -7,7 +7,7 @@ use serial_test::serial;
 use std::marker::PhantomData;
 
 // User实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct User {
     id: i64,
     username: String,
@@ -18,7 +18,7 @@ struct User {
 }
 
 // Order实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Order {
     id: i64,
     user_id: i64,
@@ -28,7 +28,7 @@ struct Order {
 }
 
 // Comment实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Comment {
     id: i64,
     user_id: i64,
@@ -55,60 +55,6 @@ impl Dao<User> for UserDao<User> {
     fn database(&self) -> &Self::Database {
         &self.database
     }
-    fn row_to_entity(row: Row) -> Result<User, DbError> {
-        if row.values.len() != 5 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(User {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            username: match &row.values[1] {
-                Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid username type".to_string(),
-                    ))
-                }
-            },
-            email: match &row.values[2] {
-                Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid email type".to_string())),
-            },
-            created_at: match &row.values[3] {
-                // Value::DateTime(dt) => *dt,
-                Value::Text(dt) => dt.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid created_at type".to_string(),
-                    ))
-                }
-            },
-            active: match &row.values[4] {
-                // Value::Boolean(b) => *b as i64,
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid active type".to_string())),
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &User) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("username".to_string(), Value::Text(entity.username.clone())));
-        map.push(("email".to_string(), Value::Text(entity.email.clone())));
-        map.push((
-            "created_at".to_string(),
-            Value::Text(entity.created_at.clone()),
-        ));
-        map.push(("active".to_string(), Value::Bigint(entity.active)));
-        map
-    }
-
     fn table_name() -> String {
         "users".to_string()
     }
@@ -132,61 +78,6 @@ impl Dao<Order> for UserDao<Order> {
         &self.database
     }
 
-    fn row_to_entity(row: Row) -> Result<Order, DbError> {
-        if row.values.len() != 5 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(Order {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            user_id: match &row.values[1] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
-            },
-            product_name: match &row.values[2] {
-                Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid product_name type".to_string(),
-                    ))
-                }
-            },
-            amount: match &row.values[3] {
-                Value::Float(f) => *f,
-                _ => return Err(DbError::ConversionError("Invalid amount type".to_string())),
-            },
-            created_at: match &row.values[4] {
-                Value::Text(dt) => dt.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid created_at type".to_string(),
-                    ))
-                }
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &Order) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
-        map.push((
-            "product_name".to_string(),
-            Value::Text(entity.product_name.clone()),
-        ));
-        map.push(("amount".to_string(), Value::Float(entity.amount)));
-        map.push((
-            "created_at".to_string(),
-            Value::Text(entity.created_at.clone()),
-        ));
-        map
-    }
-
     fn table_name() -> String {
         "orders".to_string()
     }
@@ -208,49 +99,6 @@ impl Dao<Comment> for UserDao<Comment> {
 
     fn database(&self) -> &Self::Database {
         &self.database
-    }
-
-    fn row_to_entity(row: Row) -> Result<Comment, DbError> {
-        if row.values.len() != 4 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(Comment {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            user_id: match &row.values[1] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid user_id type".to_string())),
-            },
-            content: match &row.values[2] {
-                Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid content type".to_string())),
-            },
-            created_at: match &row.values[3] {
-                Value::Text(dt) => dt.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid created_at type".to_string(),
-                    ))
-                }
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &Comment) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("user_id".to_string(), Value::Bigint(entity.user_id)));
-        map.push(("content".to_string(), Value::Text(entity.content.clone())));
-        map.push((
-            "created_at".to_string(),
-            Value::Text(entity.created_at.clone()),
-        ));
-        map
     }
 
     fn table_name() -> String {
@@ -454,7 +302,10 @@ fn test_find_by_condition() {
 
     // 按条件查询
     let users = dao
-        .find_by_condition("username = ?", vec![Value::Text("test_user".to_string())])
+        .find_by_condition(
+            vec!["username ="],
+            vec![Value::Text("test_user".to_string())],
+        )
         .unwrap();
 
     assert_eq!(users.len(), 1);
@@ -702,14 +553,14 @@ fn test_find_info_by_user_id() {
 
     // 根据用户ID查找订单
     let orders = order_dao
-        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
+        .find_by_condition(vec!["user_id ="], vec![Value::Bigint(user.id)])
         .unwrap();
     assert_eq!(orders.len(), 1);
     assert_eq!(orders[0].user_id, user.id);
 
     // 根据用户ID查找评论
     let comments = comment_dao
-        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
+        .find_by_condition(vec!["user_id ="], vec![Value::Bigint(user.id)])
         .unwrap();
     assert_eq!(comments.len(), 1);
     assert_eq!(comments[0].user_id, user.id);
@@ -739,13 +590,13 @@ fn test_delete_info_by_user_id() {
 
     // 删除指定用户ID的所有内容
     let orders = order_dao
-        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
+        .find_by_condition(vec!["user_id ="], vec![Value::Bigint(user.id)])
         .unwrap();
     for order in orders {
         order_dao.delete(Value::Bigint(order.id)).unwrap();
     }
     let comments = comment_dao
-        .find_by_condition("user_id = ?", vec![Value::Bigint(user.id)])
+        .find_by_condition(vec!["user_id ="], vec![Value::Bigint(user.id)])
         .unwrap();
     for comment in comments {
         comment_dao.delete(Value::Bigint(comment.id)).unwrap();

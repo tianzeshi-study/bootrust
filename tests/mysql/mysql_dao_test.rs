@@ -7,7 +7,7 @@ use serial_test::serial;
 use std::marker::PhantomData;
 
 // User实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct User {
     id: i64,
     username: String,
@@ -36,60 +36,6 @@ impl Dao<User> for UserDao<User> {
     fn database(&self) -> &Self::Database {
         &self.database
     }
-    fn row_to_entity(row: Row) -> Result<User, DbError> {
-        if row.values.len() != 5 {
-            return Err(DbError::ConversionError(
-                "Invalid number of columns".to_string(),
-            ));
-        }
-
-        Ok(User {
-            id: match &row.values[0] {
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid id type".to_string())),
-            },
-            username: match &row.values[1] {
-                Value::Text(s) => s.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid username type".to_string(),
-                    ))
-                }
-            },
-            email: match &row.values[2] {
-                Value::Text(s) => s.clone(),
-                _ => return Err(DbError::ConversionError("Invalid email type".to_string())),
-            },
-            created_at: match &row.values[3] {
-                // Value::DateTime(dt) => *dt,
-                Value::Text(dt) => dt.clone(),
-                _ => {
-                    return Err(DbError::ConversionError(
-                        "Invalid created_at type".to_string(),
-                    ))
-                }
-            },
-            active: match &row.values[4] {
-                // Value::Boolean(b) => *b as i64,
-                Value::Bigint(i) => *i,
-                _ => return Err(DbError::ConversionError("Invalid active type".to_string())),
-            },
-        })
-    }
-
-    fn entity_to_map(entity: &User) -> Vec<(String, Value)> {
-        let mut map = Vec::new();
-        map.push(("id".to_string(), Value::Bigint(entity.id)));
-        map.push(("username".to_string(), Value::Text(entity.username.clone())));
-        map.push(("email".to_string(), Value::Text(entity.email.clone())));
-        map.push((
-            "created_at".to_string(),
-            Value::Text(entity.created_at.clone()),
-        ));
-        map.push(("active".to_string(), Value::Bigint(entity.active)));
-        map
-    }
-
     fn table_name() -> String {
         "users".to_string()
     }
@@ -245,7 +191,10 @@ fn test_find_by_condition() {
 
     // 按条件查询
     let users = dao
-        .find_by_condition("username = ?", vec![Value::Text("test_user".to_string())])
+        .find_by_condition(
+            vec!["username ="],
+            vec![Value::Text("test_user".to_string())],
+        )
         .unwrap();
 
     assert_eq!(users.len(), 1);

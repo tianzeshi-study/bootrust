@@ -1,25 +1,32 @@
-use bootrust::dao::Dao;
-use bootrust::database::{
-    mysql::MySqlDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
-};
+use bootrust::asyncdatabase::{sqlite::SqliteDatabase, DatabaseConfig, RelationalDatabase, Value};
+use bootrust::entity::Entity;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serial_test::serial;
-use std::marker::PhantomData;
+use std::sync::Arc;
 
 // 商品实体
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Product {
     id: i64,
     name: String,
     description: String,
     price: f64,
     stock: i64,
-    #[serde(with = "chrono::serde::ts_seconds")]
+    // #[serde(with = "chrono::serde::ts_seconds")]
     created_at: DateTime<Utc>,
 }
+impl Entity for Product {
+    fn table() -> String {
+        "products".to_string()
+    }
 
+    fn primary_key() -> String {
+        "id".to_string()
+    }
+}
 // 购物车实体
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct CartItem {
     id: i64,
     user_id: i64,
@@ -29,8 +36,17 @@ struct CartItem {
     added_at: DateTime<Utc>,
 }
 
+impl Entity for CartItem {
+    fn table() -> String {
+        "cart_items".to_string()
+    }
+
+    fn primary_key() -> String {
+        "id".to_string()
+    }
+}
 // 支付信息实体
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct Payment {
     id: i64,
     order_id: i64,
@@ -41,83 +57,18 @@ struct Payment {
     paid_at: DateTime<Utc>,
 }
 
-// ECommerceDo实现
-struct ECommerceDo<T: Sized, D: RelationalDatabase> {
-    database: D,
-    _table: PhantomData<T>,
-}
-
-impl<D: RelationalDatabase> Dao<Product> for ECommerceDo<Product, D> {
-    type Database = D;
-
-    fn new(database: Self::Database) -> Self {
-        ECommerceDo {
-            database,
-            _table: PhantomData,
-        }
-    }
-
-    fn database(&self) -> &Self::Database {
-        &self.database
-    }
-
-    fn table_name() -> String {
-        "products".to_string()
-    }
-
-    fn primary_key_column() -> String {
-        "id".to_string()
-    }
-}
-
-impl<D: RelationalDatabase> Dao<CartItem> for ECommerceDo<CartItem, D> {
-    type Database = D;
-
-    fn new(database: Self::Database) -> Self {
-        ECommerceDo {
-            database,
-            _table: PhantomData,
-        }
-    }
-
-    fn database(&self) -> &Self::Database {
-        &self.database
-    }
-
-    fn table_name() -> String {
-        "cart_items".to_string()
-    }
-
-    fn primary_key_column() -> String {
-        "id".to_string()
-    }
-}
-
-impl<D: RelationalDatabase> Dao<Payment> for ECommerceDo<Payment, D> {
-    type Database = D;
-
-    fn new(database: Self::Database) -> Self {
-        ECommerceDo {
-            database,
-            _table: PhantomData,
-        }
-    }
-
-    fn database(&self) -> &Self::Database {
-        &self.database
-    }
-
-    fn table_name() -> String {
+impl Entity for Payment {
+    fn table() -> String {
         "payments".to_string()
     }
 
-    fn primary_key_column() -> String {
+    fn primary_key() -> String {
         "id".to_string()
     }
 }
 
 // 设置测试数据库
-fn setup_test_db() -> MySqlDatabase {
+async fn setup_test_db() -> SqliteDatabase {
     let config = DatabaseConfig {
         host: "localhost".to_string(),
         port: 3306,
@@ -126,10 +77,12 @@ fn setup_test_db() -> MySqlDatabase {
         database_name: "test".to_string(),
         max_size: 10,
     };
-    let db = MySqlDatabase::connect(config).unwrap();
+    let db = SqliteDatabase::connect(config).await.unwrap();
 
     // 创建商品表
-    db.execute("DROP TABLE IF EXISTS products", vec![]).unwrap();
+    db.execute("DROP TABLE IF EXISTS products", vec![])
+        .await
+        .unwrap();
     db.execute(
         "CREATE TABLE products (
             id INTEGER PRIMARY KEY,
@@ -137,14 +90,17 @@ fn setup_test_db() -> MySqlDatabase {
             description TEXT,
             price DOUBLE NOT NULL,
             stock INTEGER NOT NULL,
-            created_at BIGINT NOT NULL
+            -- created_at INTEGER NOT NULL
+            created_at TEXT NOT NULL
         )",
         vec![],
     )
+    .await
     .unwrap();
 
     // 创建购物车表
     db.execute("DROP TABLE IF EXISTS cart_items", vec![])
+        .await
         .unwrap();
     db.execute(
         "CREATE TABLE cart_items (
@@ -152,14 +108,18 @@ fn setup_test_db() -> MySqlDatabase {
             user_id INTEGER NOT NULL,
             product_id INTEGER NOT NULL,
             quantity INTEGER NOT NULL,
-            added_at BIGINT NOT NULL
+            added_at INTEGER NOT NULL
+            -- added_at TEXT  NOT NULL
         )",
         vec![],
     )
+    .await
     .unwrap();
 
     // 创建支付信息表
-    db.execute("DROP TABLE IF EXISTS payments", vec![]).unwrap();
+    db.execute("DROP TABLE IF EXISTS payments", vec![])
+        .await
+        .unwrap();
     db.execute(
         "CREATE TABLE payments (
             id INTEGER PRIMARY KEY,
@@ -167,10 +127,12 @@ fn setup_test_db() -> MySqlDatabase {
             amount DOUBLE NOT NULL,
             payment_method TEXT NOT NULL,
             transaction_id TEXT NOT NULL,
-            paid_at BIGINT NOT NULL
+            paid_at INTEGER NOT NULL
+            -- paid_at TEXT  NOT NULL
         )",
         vec![],
     )
+    .await
     .unwrap();
 
     db
@@ -212,76 +174,78 @@ fn create_test_payment() -> Payment {
 }
 
 // 测试添加商品到购物车
-#[test]
+#[tokio::test]
 #[serial]
-fn test_add_product_to_cart() {
-    let db = setup_test_db();
-    let product_dao = ECommerceDo::new(db.clone());
-    let cart_dao = ECommerceDo::new(db.clone());
+async fn test_entity_add_product_to_cart() {
+    let db = setup_test_db().await;
 
     // 创建测试商品
     let product = create_test_product();
-    product_dao.create(&product).unwrap();
+    Product::create(&db, &product).await.unwrap();
 
     // 添加商品到购物车
     let mut cart_item = create_test_cart_item();
     cart_item.product_id = product.id;
-    let result = cart_dao.create(&cart_item);
+    let result = CartItem::create(&db, &cart_item).await;
     assert!(result.is_ok());
 
     // 验证购物车项是否添加成功
-    let added_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
+    let added_item: Option<CartItem> = CartItem::find_by_id(&db, Value::Bigint(cart_item.id))
+        .await
+        .unwrap();
     assert!(added_item.is_some());
-    assert_eq!(added_item.unwrap().product_id, product.id);
+    let item = added_item.unwrap();
+    dbg!(&item);
+    assert_eq!(item.product_id, product.id);
 }
 
 // 测试从购物车移除商品
-#[test]
+#[tokio::test]
 #[serial]
-fn test_remove_product_from_cart() {
-    let db = setup_test_db();
-    let cart_dao = ECommerceDo::new(db.clone());
-
+async fn test_remove_product_from_cart() {
+    let db = setup_test_db().await;
     // 添加商品到购物车
     let cart_item = create_test_cart_item();
-    cart_dao.create(&cart_item).unwrap();
+    CartItem::create(&db, &cart_item).await.unwrap();
 
     // 从购物车移除商品
-    let result = cart_dao.delete(Value::Bigint(cart_item.id));
+    let result = CartItem::delete::<CartItem, _>(&db, Value::Bigint(cart_item.id)).await;
+
     assert!(result.is_ok());
 
     // 验证购物车项是否已移除
-    let removed_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
+    let removed_item: Option<CartItem> = CartItem::find_by_id(&db, Value::Bigint(cart_item.id))
+        .await
+        .unwrap();
     assert!(removed_item.is_none());
 }
 
 // 测试更新购物车商品数量
-#[test]
+#[tokio::test]
 #[serial]
-fn test_update_cart_item_quantity() {
-    let db = setup_test_db();
-    let cart_dao = ECommerceDo::new(db.clone());
-
+async fn test_update_cart_item_quantity() {
+    let db = setup_test_db().await;
     // 添加商品到购物车
     let mut cart_item = create_test_cart_item();
-    cart_dao.create(&cart_item).unwrap();
+    CartItem::create(&db, &cart_item).await.unwrap();
 
     // 更新购物车商品数量
     cart_item.quantity = 3;
-    let result = cart_dao.update(&cart_item);
+    let result = CartItem::update(&db, &cart_item).await;
     assert!(result.is_ok());
 
     // 验证购物车商品数量是否更新
-    let updated_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
+    let updated_item: Option<CartItem> = CartItem::find_by_id(&db, Value::Bigint(cart_item.id))
+        .await
+        .unwrap();
     assert_eq!(updated_item.unwrap().quantity, 3);
 }
 
 // 测试支付流程
-#[test]
+#[tokio::test]
 #[serial]
-fn test_payment_process() {
-    let db = setup_test_db();
-    let payment_dao = ECommerceDo::new(db.clone());
+async fn test_payment_process() {
+    let db = setup_test_db().await;
 
     // 创建测试订单
     let order_id = 1;
@@ -289,111 +253,133 @@ fn test_payment_process() {
     // 进行支付
     let mut payment = create_test_payment();
     payment.order_id = order_id;
-    let result = payment_dao.create(&payment);
+    let result = Payment::create(&db, &payment).await;
     assert!(result.is_ok());
 
     // 验证支付信息是否保存成功
-    let saved_payment = payment_dao.find_by_id(Value::Bigint(payment.id)).unwrap();
+    let saved_payment: Option<Payment> = Payment::find_by_id(&db, Value::Bigint(payment.id))
+        .await
+        .unwrap();
     assert!(saved_payment.is_some());
     assert_eq!(saved_payment.unwrap().order_id, order_id);
 }
 
 // 测试库存更新
-#[test]
+#[tokio::test]
 #[serial]
-fn test_stock_update() {
-    let db = setup_test_db();
-    let product_dao = ECommerceDo::new(db.clone());
+async fn test_stock_update() {
+    let db = setup_test_db().await;
 
     // 创建测试商品
     let mut product = create_test_product();
-    product_dao.create(&product).unwrap();
+    Product::create(&db, &product).await.unwrap();
 
     // 更新商品库存
     product.stock = 50;
-    let result = product_dao.update(&product);
+    let result = Product::update(&db, &product).await;
     assert!(result.is_ok());
 
     // 验证商品库存是否更新
-    let updated_product = product_dao.find_by_id(Value::Bigint(product.id)).unwrap();
+    let updated_product: Option<Product> = Product::find_by_id(&db, Value::Bigint(product.id))
+        .await
+        .unwrap();
     assert_eq!(updated_product.unwrap().stock, 50);
 }
 
 // 测试事务处理
-#[test]
+#[tokio::test]
 #[serial]
-fn test_transaction() {
-    let db = setup_test_db();
-    let product_dao = ECommerceDo::new(db.clone());
-    let cart_dao = ECommerceDo::new(db.clone());
-    let payment_dao = ECommerceDo::new(db.clone());
-
+async fn test_transaction() {
+    let db = setup_test_db().await;
     // 开始事务
-    let result = product_dao.begin_transaction();
+    let result = Product::begin_transaction(&db).await;
     assert!(result.is_ok());
 
     // 创建商品
     let product = create_test_product();
-    let result = product_dao.create(&product);
+    let result = Product::create(&db, &product).await;
     assert!(result.is_ok());
 
     // 添加商品到购物车
     let mut cart_item = create_test_cart_item();
     cart_item.product_id = product.id;
-    let result = cart_dao.create(&cart_item);
+    let result = CartItem::create(&db, &cart_item).await;
     assert!(result.is_ok());
 
     // 进行支付
     let payment = create_test_payment();
-    let result = payment_dao.create(&payment);
+    let result = Payment::create(&db, &payment).await;
     assert!(result.is_ok());
 
     // 提交事务
-    let result = product_dao.commit();
+    let result = Product::commit(&db).await;
     assert!(result.is_ok());
 
     // 验证商品、购物车项和支付信息是否已创建
-    let found_product = product_dao.find_by_id(Value::Bigint(product.id)).unwrap();
+    let found_product: Option<Product> = Product::find_by_id(&db, Value::Bigint(product.id))
+        .await
+        .unwrap();
     assert!(found_product.is_some());
 
-    let found_cart_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
+    let found_cart_item: Option<CartItem> = CartItem::find_by_id(&db, Value::Bigint(cart_item.id))
+        .await
+        .unwrap();
     assert!(found_cart_item.is_some());
 
-    let found_payment = payment_dao.find_by_id(Value::Bigint(payment.id)).unwrap();
+    let found_payment: Option<Payment> = Payment::find_by_id(&db, Value::Bigint(payment.id))
+        .await
+        .unwrap();
     assert!(found_payment.is_some());
 }
 
 // 测试事务回滚
-#[test]
+#[tokio::test]
 #[serial]
-fn test_transaction_rollback() {
-    let db = setup_test_db();
-    let product_dao = ECommerceDo::new(db.clone());
-    let cart_dao = ECommerceDo::new(db.clone());
+async fn test_transaction_rollback() {
+    let db = setup_test_db().await;
+    let _arc_db = Arc::new(&db);
 
-    // 开始事务
-    let result = product_dao.begin_transaction();
+    let result = Product::begin_transaction(&db).await;
     assert!(result.is_ok());
 
     // 创建商品
     let product = create_test_product();
-    let result = product_dao.create(&product);
+    let result = Product::create(&db, &product).await;
     assert!(result.is_ok());
 
     // 添加商品到购物车 (故意制造错误, 例如商品ID不存在)
     let mut cart_item = create_test_cart_item();
     cart_item.product_id = 999; // 不存在的商品ID
-    let _result = cart_dao.create(&cart_item);
+    let _result = CartItem::create(&db, &cart_item);
     // assert!(result.is_err()); // 应该返回错误
 
     // 回滚事务
-    let result = product_dao.rollback();
+    let result = Product::rollback(&db).await;
     assert!(result.is_ok());
 
     // 验证商品和购物车项是否未创建
-    let found_product = product_dao.find_by_id(Value::Bigint(product.id)).unwrap();
+    let found_product: Option<Product> = Product::find_by_id(&db, Value::Bigint(product.id))
+        .await
+        .unwrap();
     assert!(found_product.is_none());
 
-    let found_cart_item = cart_dao.find_by_id(Value::Bigint(cart_item.id)).unwrap();
+    let found_cart_item: Option<CartItem> = CartItem::find_by_id(&db, Value::Bigint(cart_item.id))
+        .await
+        .unwrap();
     assert!(found_cart_item.is_none());
+}
+
+#[tokio::test]
+#[serial]
+async fn test_arc_db() {
+    let db = setup_test_db().await;
+
+    let product = create_test_product();
+    Product::create(&db, &product).await.unwrap();
+
+    let added_item: Option<Product> = Product::find_by_id(&db, Value::Bigint(product.id))
+        .await
+        .unwrap();
+    assert!(added_item.is_some());
+    assert_eq!(added_item.unwrap().id, product.id);
 }

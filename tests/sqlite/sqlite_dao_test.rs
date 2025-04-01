@@ -6,7 +6,7 @@ use chrono::Utc;
 use std::marker::PhantomData;
 
 // User实体
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct User {
     id: i64,
     username: String,
@@ -233,14 +233,17 @@ fn test_find_by_condition() {
 
     // 按条件查询
     let users = dao
-        .find_by_condition("username = ?", vec![Value::Text("test_user".to_string())])
+        .find_by_condition(
+            vec!["username ="],
+            vec![Value::Text("test_user".to_string())],
+        )
         .unwrap();
 
     assert_eq!(users.len(), 1);
     assert_eq!(users[0].username, "test_user");
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct VIPUser {
     id: i64,
     vip_username: String,
@@ -469,7 +472,7 @@ fn test_find_by_vip_condition() {
     // 按条件查询
     let vip_users = dao
         .find_by_condition(
-            "vip_username = ?",
+            vec!["vip_username ="],
             vec![Value::Text("test_vip_user".to_string())],
         )
         .unwrap();
@@ -478,7 +481,7 @@ fn test_find_by_vip_condition() {
     assert_eq!(vip_users[0].vip_username, "test_vip_user");
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 struct Order {
     id: i64,
     user_id: i64,
@@ -700,7 +703,7 @@ fn test_find_by_order_condition() {
     // 按条件查询
     let orders = dao
         .find_by_condition(
-            "product_name = ?",
+            vec!["product_name ="],
             vec![Value::Text("Test Product".to_string())],
         )
         .unwrap();
