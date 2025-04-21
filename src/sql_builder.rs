@@ -48,6 +48,7 @@ where
             offset: None,
         }
     }
+
     pub fn find(mut self) -> Self {
         self.query_type = Some("SELECT".to_string());
         self.columns = vec!["*".to_string()];
@@ -161,14 +162,6 @@ where
         self
     }
 
-    /// 设定 INSERT INTO 语句
-    pub fn insert_into(mut self, table: &str, columns: &[&str]) -> Self {
-        self.query_type = Some("INSERT".to_string());
-        self.table = Some(table.to_string());
-        self.columns = columns.iter().map(|s| s.to_string()).collect();
-        self
-    }
-
     /// 设定插入的 VALUES
     pub fn values(mut self, values: Vec<Value>) -> Self {
         self.values = values;
@@ -192,28 +185,9 @@ where
         self
     }
 
-    /// 设定 UPDATE 语句
-    pub fn update_to(mut self, table: &str) -> Self {
-        self.query_type = Some("UPDATE".to_string());
-        self.table = Some(table.to_string());
-        self
-    }
-
-    /// 设定 SET 语句
-    pub fn set(mut self, column: &str, value: &str) -> Self {
-        self.set_clauses.push(format!("{} = '{}'", column, value));
-        self
-    }
     pub fn delete(mut self) -> Self {
         self.query_type = Some("DELETE".to_string());
 
-        self
-    }
-
-    /// 设定 DELETE 语句
-    pub fn delete_from(mut self, table: &str) -> Self {
-        self.query_type = Some("DELETE".to_string());
-        self.table = Some(table.to_string());
         self
     }
 
