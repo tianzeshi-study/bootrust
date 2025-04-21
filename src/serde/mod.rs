@@ -20,7 +20,7 @@ mod test {
         // let s = Value::Bytes(vec![1]);
         let de = EntityDeserializer::from_value(s);
 
-        let result = Vec::<u8>::deserialize(de).unwrap();
+        let _result = Vec::<u8>::deserialize(de).unwrap();
 
         // let d1 = EntityDeserializer::from_value(d);
     }

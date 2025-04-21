@@ -450,6 +450,6 @@ mod tests {
         let mut convertor = EntityConvertor::new(cursor);
         let bytes: Vec<u8> = vec![1; 256];
         // let bytes = vec!["1".to_string()];
-        let result = bytes.serialize(&mut convertor);
+        let _result = bytes.serialize(&mut convertor);
     }
 }
