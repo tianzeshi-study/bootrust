@@ -91,7 +91,7 @@ where
 
     /// 根据ID查找记录
     async fn find_by_id(&self, id: Value) -> Result<Option<T>, DbError> {
-        let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
+        let placeholder = self.placeholders(&[Self::primary_key_column()])[0].clone();
         let query = format!(
             "SELECT * FROM {} WHERE {} = {}",
             Self::table_name(),
@@ -159,7 +159,7 @@ where
 
     /// 删除记录
     async fn delete(&self, id: Value) -> Result<u64, DbError> {
-        let placeholder = self.placeholders(&vec![Self::primary_key_column()])[0].clone();
+        let placeholder = self.placeholders(&[Self::primary_key_column()])[0].clone();
         let query = format!(
             "DELETE FROM {} WHERE {} = {}",
             Self::table_name(),

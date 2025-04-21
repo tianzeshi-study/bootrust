@@ -98,7 +98,7 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
         db: &D,
         id: Value,
     ) -> Result<Option<T>, DbError> {
-        let placeholder = db.placeholders(&vec![Self::primary_key()])[0].clone();
+        let placeholder = db.placeholders(&[Self::primary_key()])[0].clone();
         let query = format!(
             "SELECT * FROM {} WHERE {} = {}",
             Self::table(),
@@ -169,7 +169,7 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
         db: &D,
         id: Value,
     ) -> Result<u64, DbError> {
-        let placeholder = db.placeholders(&vec![Self::primary_key()])[0].clone();
+        let placeholder = db.placeholders(&[Self::primary_key()])[0].clone();
         let query = format!(
             "DELETE FROM {} WHERE {} = {}",
             Self::table(),
