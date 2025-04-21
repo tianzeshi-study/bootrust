@@ -1,6 +1,6 @@
 use bootrust::dao::Dao;
 use bootrust::database::{
-    mysql::MySqlDatabase, DatabaseConfig, DbError, RelationalDatabase, Row, Value,
+    mysql::MySqlDatabase, DatabaseConfig, RelationalDatabase, Value,
 };
 use chrono::{DateTime, Utc};
 use serial_test::serial;

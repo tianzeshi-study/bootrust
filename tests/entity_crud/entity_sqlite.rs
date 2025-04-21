@@ -638,7 +638,7 @@ async fn test_complex_update() {
     let db = setup_test_db().await;
 
     // 创建测试商品
-    let mut product = create_test_product();
+    let product = create_test_product();
     Product::create(&db, &product).await.unwrap();
 
     // 更新商品库存
