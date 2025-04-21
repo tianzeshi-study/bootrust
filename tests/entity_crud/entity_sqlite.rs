@@ -74,7 +74,7 @@ async fn setup_test_db() -> SqliteDatabase {
         port: 3306,
         username: "root".to_string(),
         password: "root".to_string(),
-        database_name: "test".to_string(),
+        database_name: ":memory:".to_string(),
         max_size: 10,
     };
     let db = SqliteDatabase::connect(config).await.unwrap();
