@@ -127,7 +127,7 @@ impl From<postgres::Error> for DbError {
 }
 
 impl RelationalDatabase for PostgresDatabase {
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
+    fn placeholders(&self, keys: &[String]) -> Vec<String> {
         keys.iter()
             .enumerate()
             .map(|(i, _)| format!("${}", i + 1))

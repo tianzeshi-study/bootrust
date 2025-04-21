@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 #[async_trait::async_trait]
 pub trait RelationalDatabase: Sync + Send + Clone {
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
+    fn placeholders(&self, keys: &[String]) -> Vec<String>;
     // 连接相关
     async fn connect(config: DatabaseConfig) -> Result<Self, DbError>
     where
@@ -53,7 +53,7 @@ pub async fn auto_config() -> sqlite::SqliteDatabase {
 
 #[async_trait::async_trait]
 impl<T: RelationalDatabase> RelationalDatabase for Arc<T> {
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
+    fn placeholders(&self, keys: &[String]) -> Vec<String> {
         (**self).placeholders(keys)
     }
     // 连接相关

@@ -374,7 +374,7 @@ pub struct EntitySerializeSeq<'a, W: 'a> {
 }
 
 // 为 EntitySerializeSeq 实现 SerializeSeq trait
-impl<'a, W> SerializeSeq for EntitySerializeSeq<'a, W>
+impl<W> SerializeSeq for EntitySerializeSeq<'_, W>
 where
     W: io::Write,
 {

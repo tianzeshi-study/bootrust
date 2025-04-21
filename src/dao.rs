@@ -15,7 +15,7 @@ where
     /// 数据库引用
     fn database(&self) -> &Self::Database;
 
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
+    fn placeholders(&self, keys: &[String]) -> Vec<String> {
         self.database().placeholders(keys)
     }
 

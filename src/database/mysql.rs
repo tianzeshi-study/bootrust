@@ -102,7 +102,7 @@ impl MySqlDatabase {
 }
 
 impl RelationalDatabase for MySqlDatabase {
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String> {
+    fn placeholders(&self, keys: &[String]) -> Vec<String> {
         vec!["?".to_string(); keys.len()]
     }
     fn connect(config: DatabaseConfig) -> Result<Self, DbError> {

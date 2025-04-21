@@ -216,6 +216,6 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
     }
 
     fn prepare<D: RelationalDatabase, T: EntityData>(db: &D) -> SqlExecutor<D, T> {
-        SqlExecutor::new(&db, Self::table())
+        SqlExecutor::new(db, Self::table())
     }
 }

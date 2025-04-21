@@ -26,7 +26,7 @@ pub fn auto_config() -> sqlite::SqliteDatabase {
 }
 // 定义关系型数据库通用接口
 pub trait RelationalDatabase: Clone {
-    fn placeholders(&self, keys: &Vec<String>) -> Vec<String>;
+    fn placeholders(&self, keys: &[String]) -> Vec<String>;
     // 连接相关
     fn connect(config: DatabaseConfig) -> Result<Self, DbError>
     where

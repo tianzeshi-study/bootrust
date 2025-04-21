@@ -82,7 +82,7 @@ where
                 let where_clauses = conditions
                     .iter()
                     .enumerate()
-                    .map(|(i, c)| format!("{} {}", c, placeholders[&conditions.len() + i]))
+                    .map(|(i, c)| format!("{} {}", c, placeholders[conditions.len() + i]))
                     .collect::<Vec<String>>();
 
                 self.where_clauses = where_clauses;
@@ -128,7 +128,7 @@ where
         let having_condition = conditions
             .iter()
             .enumerate()
-            .map(|(i, c)| format!("{} {}", c, placeholders[&self.where_clauses.len() + i]))
+            .map(|(i, c)| format!("{} {}", c, placeholders[self.where_clauses.len() + i]))
             .collect::<Vec<String>>();
 
         self.having = having_condition;
@@ -170,9 +170,12 @@ where
 
     pub fn update(mut self, columns: &[&str]) -> Self {
         self.query_type = Some("UPDATE".to_string());
-        let placeholders = self
-            .database
-            .placeholders(&columns.iter().map(|s| s.to_string()).collect());
+        let placeholders = self.database.placeholders(
+            &columns
+                .iter()
+                .map(|s| s.to_string())
+                .collect::<Vec<String>>(),
+        );
 
         let set_clauses: Vec<String> = columns
             .iter()
@@ -203,7 +206,7 @@ where
                 sql.push_str(&self.table.unwrap());
 
                 if !self.joins.is_empty() {
-                    sql.push_str(" ");
+                    sql.push(' ');
                     sql.push_str(&self.joins.join(" "));
                 }
 
@@ -242,12 +245,16 @@ where
                 sql.push_str(" (");
                 sql.push_str(&self.columns.join(", "));
                 sql.push_str(") VALUES (");
-                let placeholders = self
-                    .database
-                    .placeholders(&self.columns.iter().map(|s| s.to_string()).collect());
+                let placeholders = self.database.placeholders(
+                    &self
+                        .columns
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>(),
+                );
                 sql.push_str(&placeholders.join(", "));
                 // sql.push_str(&self.values.join(", "));
-                sql.push_str(")");
+                sql.push(')');
             }
             Some("UPDATE") => {
                 sql.push_str("UPDATE ");
@@ -293,7 +300,7 @@ where
                 sql.push_str(&self.table.unwrap());
 
                 if !self.joins.is_empty() {
-                    sql.push_str(" ");
+                    sql.push(' ');
                     sql.push_str(&self.joins.join(" "));
                 }
 
@@ -332,12 +339,16 @@ where
                 sql.push_str(" (");
                 sql.push_str(&self.columns.join(", "));
                 sql.push_str(") VALUES (");
-                let placeholders = self
-                    .database
-                    .placeholders(&self.columns.iter().map(|s| s.to_string()).collect());
+                let placeholders = self.database.placeholders(
+                    &self
+                        .columns
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>(),
+                );
                 sql.push_str(&placeholders.join(", "));
                 // sql.push_str(&self.values.join(", "));
-                sql.push_str(")");
+                sql.push(')');
             }
             Some("UPDATE") => {
                 sql.push_str("UPDATE ");
