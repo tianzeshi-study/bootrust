@@ -158,8 +158,11 @@ impl RelationalDatabase for SqliteDatabase {
         self.execute_with_connection(|conn| {
             let params: Vec<Box<dyn ToSql>> =
                 params.iter().map(SqliteDatabase::value_to_sql).collect();
+            let mut stmt = conn
+                .prepare(query)
+                .map_err(|e| DbError::ConversionError(e.to_string()))?;
 
-            conn.execute(query, rusqlite::params_from_iter(params.iter()))
+            stmt.execute(rusqlite::params_from_iter(params.iter()))
                 .map(|rows| rows as u64)
                 .map_err(|e| DbError::QueryError(e.to_string().into()))
         })

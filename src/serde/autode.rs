@@ -157,10 +157,10 @@ impl<'de> Deserializer<'de> for EntityDeserializer {
         match self.value {
             Value::Bytes(ref bytes) => {
                 // 使用 bincode 将字节反序列化为 Vec<Value>
-                dbg!(&bytes);
+
                 let vec_values: Vec<Value> = bincode::deserialize(bytes).unwrap();
                 // .map_err(|e| de::Error::custom(&e.to_string()))?;
-                dbg!(&vec_values);
+
                 // 构造自定义的 SeqAccess 实现
                 let seq_access = EntitySeqAccess::new(vec_values);
                 visitor.visit_seq(seq_access)

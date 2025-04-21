@@ -434,7 +434,6 @@ mod tests {
 
         // 序列化结构体
         let result = test_struct.serialize(&mut convertor);
-        dbg!(&result);
 
         // 检查序列化是否成功
         assert!(result.is_ok());
@@ -452,6 +451,5 @@ mod tests {
         let bytes: Vec<u8> = vec![1; 256];
         // let bytes = vec!["1".to_string()];
         let result = bytes.serialize(&mut convertor);
-        dbg!(&result);
     }
 }

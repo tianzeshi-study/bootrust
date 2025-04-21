@@ -141,8 +141,11 @@ impl RelationalDatabase for SqliteDatabase {
         self.execute_with_connection(|conn| {
             let params: Vec<Box<dyn ToSql>> =
                 params.iter().map(SqliteDatabase::value_to_sql).collect();
+            let mut stmt = conn
+                .prepare(query)
+                .map_err(|e| DbError::ConversionError(e.to_string()))?;
 
-            conn.execute(query, rusqlite::params_from_iter(params.iter()))
+            stmt.execute(rusqlite::params_from_iter(params.iter()))
                 .map(|rows| rows as u64)
                 .map_err(|e| DbError::QueryError(e.to_string().into()))
         })
@@ -235,7 +238,7 @@ mod tests {
     #[test]
     fn test_basic_connection() {
         let db = setup_test_db();
-        dbg!(&db.ping());
+
         assert!(db.ping().is_ok());
     }
 
@@ -303,7 +306,6 @@ mod tests {
             vec![],
         )
         .unwrap();
-        dbg!(&db.query("SELECT * FROM test", vec![]).unwrap());
 
         // 测试成功的事务
         db.begin_transaction().unwrap();

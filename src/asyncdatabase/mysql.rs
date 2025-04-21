@@ -241,9 +241,12 @@ impl RelationalDatabase for MySqlDatabase {
         self.execute_with_connection(|conn| {
             let params: Vec<mysql::Value> =
                 params.iter().map(MySqlDatabase::value_to_mysql).collect();
+            let stmt = conn
+                .prep(query)
+                .map_err(|e| DbError::ConversionError(e.to_string()))?;
 
             let result = conn
-                .exec_map(query, params, |row: mysql::Row| {
+                .exec_map(&stmt, params, |row: mysql::Row| {
                     let mut values = Vec::new();
                     let columns = row.columns();
 

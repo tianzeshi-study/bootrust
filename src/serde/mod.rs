@@ -16,13 +16,12 @@ mod test {
         let bytes: Vec<u8> = vec![1];
 
         let s = bytes.serialize(&mut convertor).unwrap();
-        dbg!(&s);
+
         // let s = Value::Bytes(vec![1]);
         let de = EntityDeserializer::from_value(s);
-        dbg!(&de);
+
         let result = Vec::<u8>::deserialize(de).unwrap();
-        dbg!(&result);
+
         // let d1 = EntityDeserializer::from_value(d);
-        // dbg!(&d1);
     }
 }
