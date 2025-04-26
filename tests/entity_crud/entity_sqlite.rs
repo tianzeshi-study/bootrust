@@ -209,7 +209,7 @@ async fn test_remove_product_from_cart() {
     CartItem::create(&db, &cart_item).await.unwrap();
 
     // 从购物车移除商品
-    let result = CartItem::delete::<CartItem, _>(&db, Value::Bigint(cart_item.id)).await;
+    let result = CartItem::delete(&db, Value::Bigint(cart_item.id)).await;
 
     assert!(result.is_ok());
 

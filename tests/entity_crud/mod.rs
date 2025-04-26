@@ -11,3 +11,6 @@ mod postgres_types;
 mod entity_sqlite;
 #[cfg(feature = "sqlite_async")]
 mod sqlite_types;
+
+#[cfg(feature = "postgresql_async")]
+mod queryable_postgres;

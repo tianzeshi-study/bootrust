@@ -101,6 +101,75 @@ pub enum Value {
     // 其他数据类型...
 }
 
+impl<T: Into<Value>> From<Option<T>> for Value {
+    fn from(v: Option<T>) -> Self {
+        if let Some(val) = v {
+            val.into()
+        } else  {
+        Value::Null
+        }
+    }
+}
+
+impl From<i32> for Value {
+    fn from(v: i32) -> Self {
+        Value::Int(v)
+    }
+}
+
+impl From<i64> for Value {
+    fn from(v: i64) -> Self {
+        Value::Bigint(v)
+    }
+}
+
+impl From<f32> for Value {
+    fn from(v: f32) -> Self {
+        Value::Float(v)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(v: f64) -> Self {
+        Value::Double(v)
+    }
+}
+
+impl From<String> for Value {
+    fn from(v: String) -> Self {
+        Value::Text(v)
+    }
+}
+
+impl From<bool> for Value {
+    fn from(v: bool) -> Self {
+        Value::Boolean(v)
+    }
+}
+
+impl From<u8> for Value {
+    fn from(v: u8) -> Self {
+        Value::Byte(v)
+    }
+}
+
+
+impl From<Vec<u8>> for Value {
+    fn from(v: Vec<u8>) -> Self {
+        Value::Bytes(v)
+    }
+}
+
+
+
+impl From<chrono::DateTime<chrono::Utc>> for Value {
+    fn from(v: chrono::DateTime<chrono::Utc>) -> Self {
+        Value::DateTime(v)
+    }
+}
+
+
+
 // 定义通用的结果行类型
 #[derive(Debug)]
 pub struct Row {

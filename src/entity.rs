@@ -94,24 +94,7 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
         db.execute(&query, values).await
     }
 
-    async fn find_by_id<T: EntityData, D: RelationalDatabase>(
-        db: &D,
-        id: Value,
-    ) -> Result<Option<T>, DbError> {
-        let placeholder = db.placeholders(&[Self::primary_key()])[0].clone();
-        let query = format!(
-            "SELECT * FROM {} WHERE {} = {}",
-            Self::table(),
-            Self::primary_key(),
-            placeholder
-        );
-
-        let result = db.query_one(&query, vec![id]).await?;
-        match result {
-            Some(row) => Ok(Some(Self::row_to_entity(row)?)),
-            None => Ok(None),
-        }
-    }
+    
 
     async fn find_all<T: EntityData, D: RelationalDatabase>(db: &D) -> Result<Vec<T>, DbError> {
         let query = format!("SELECT * FROM {}", Self::table());
@@ -123,6 +106,26 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
         }
         Ok(entities)
     }
+    
+    async fn find_by_id<T: EntityData, D: RelationalDatabase>(
+        db: &D,
+        id: impl Into<Value>+Send,
+    ) -> Result<Option<T>, DbError> {
+        let placeholder = db.placeholders(&[Self::primary_key()])[0].clone();
+        let query = format!(
+            "SELECT * FROM {} WHERE {} = {}",
+            Self::table(),
+            Self::primary_key(),
+            placeholder
+        );
+
+        let result = db.query_one(&query, vec![id.into()]).await?;
+        match result {
+            Some(row) => Ok(Some(Self::row_to_entity(row)?)),
+            None => Ok(None),
+        }
+    }
+
 
     async fn update<T: EntityData, D: RelationalDatabase>(
         db: &D,
@@ -165,9 +168,9 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
         db.execute(&query, values).await
     }
 
-    async fn delete<T: EntityData, D: RelationalDatabase>(
+    async fn delete<D: RelationalDatabase>(
         db: &D,
-        id: Value,
+        id: impl Into<Value>+Send,
     ) -> Result<u64, DbError> {
         let placeholder = db.placeholders(&[Self::primary_key()])[0].clone();
         let query = format!(
@@ -177,13 +180,13 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
             placeholder
         );
 
-        db.execute(&query, vec![id]).await
+        db.execute(&query, vec![id.into()]).await
     }
 
     async fn find_by_condition<T: EntityData, D: RelationalDatabase>(
         db: &D,
         condition: Vec<&str>,
-        params: Vec<Value>,
+        params: Vec<impl Into<Value>+Send>,
     ) -> Result<Vec<T>, DbError> {
         let conditions: Vec<String> = condition.iter().map(|s| s.to_string()).collect();
         let placeholders = db.placeholders(&conditions);
@@ -195,7 +198,7 @@ pub trait Entity: Sized + Sync + Serialize + for<'de> Deserialize<'de> {
             .join(" AND ");
         let query = format!("SELECT * FROM {} WHERE {}", Self::table(), where_condition);
 
-        let rows = db.query(&query, params).await?;
+        let rows = db.query(&query, params.into_iter().map(|v| v.into()).collect::<Vec<Value>>()).await?;
         let mut entities = Vec::with_capacity(rows.len());
         for row in rows {
             entities.push(Self::row_to_entity(row)?);

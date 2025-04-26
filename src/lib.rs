@@ -11,3 +11,4 @@ pub mod database;
 pub mod entity;
 mod sql_builder;
 pub use sql_builder::SqlExecutor;
+pub mod queryable;
