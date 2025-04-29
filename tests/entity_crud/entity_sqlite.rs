@@ -409,9 +409,9 @@ async fn test_multi_condition_query() {
     assert!(saved_payment.is_some());
     assert_eq!(saved_payment.unwrap().order_id, order_id);
 
-    let saved_payment: Vec<Payment> = Payment::find_by_condition(
+    let saved_payment: Vec<Payment> = Payment::find_by_conditions(
         &db,
-        vec!["id =", "order_id =", "amount <"],
+        &["id =", "order_id =", "amount <"],
         vec![
             Value::Bigint(payment.id),
             Value::Bigint(payment.order_id),
@@ -422,9 +422,9 @@ async fn test_multi_condition_query() {
     .unwrap();
     assert_eq!(saved_payment[0].order_id, order_id);
 
-    let saved_payment: Vec<Payment> = Payment::find_by_condition(
+    let saved_payment: Vec<Payment> = Payment::find_by_conditions(
         &db,
-        vec!["id <", "order_id <", "amount >="],
+        &["id <", "order_id <", "amount >="],
         vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.0)],
     )
     .await
@@ -643,7 +643,7 @@ async fn test_complex_update() {
 
     // 更新商品库存
     // product.stock = 50;
-    let result: u64 = Product::prepare::<_, Product>(&db)
+    let result: u64 = Product::prepare::<Product>(&db)
         .update(&["stock"])
         .where_clauses(vec!["id ="])
         .values(vec![Value::Bigint(50), Value::Bigint(1)])
@@ -666,7 +666,7 @@ async fn test_complex_insert() {
 
     // 创建测试商品
     let product = create_test_product();
-    Product::prepare::<_, Product>(&db)
+    Product::prepare::<Product>(&db)
         .insert(&["id", "name", "description", "price", "stock", "created_at"])
         .values(vec![
             Value::Bigint(1),

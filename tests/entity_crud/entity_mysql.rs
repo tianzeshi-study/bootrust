@@ -409,9 +409,9 @@ async fn test_multi_condition_query() {
     assert!(saved_payment.is_some());
     assert_eq!(saved_payment.unwrap().order_id, order_id);
 
-    let saved_payment: Vec<Payment> = Payment::find_by_condition(
+    let saved_payment: Vec<Payment> = Payment::find_by_conditions(
         &db,
-        vec!["id =", "order_id =", "amount <"],
+        &["id =", "order_id =", "amount <"],
         vec![
             Value::Bigint(payment.id),
             Value::Bigint(payment.order_id),
@@ -422,9 +422,9 @@ async fn test_multi_condition_query() {
     .unwrap();
     assert_eq!(saved_payment[0].order_id, order_id);
 
-    let saved_payment: Vec<Payment> = Payment::find_by_condition(
+    let saved_payment: Vec<Payment> = Payment::find_by_conditions(
         &db,
-        vec!["id <", "order_id <", "amount >="],
+        &["id <", "order_id <", "amount >="],
         vec![Value::Bigint(10), Value::Bigint(10), Value::Double(100.0)],
     )
     .await
@@ -643,7 +643,7 @@ async fn test_complex_update() {
 
     // 更新商品库存
     // product.stock = 50;
-    let result: u64 = Product::prepare::<_, Product>(&db)
+    let result: u64 = Product::prepare::<Product>(&db)
         .update(&["stock"])
         .where_clauses(vec!["id ="])
         .values(vec![Value::Bigint(50), Value::Bigint(1)])
@@ -666,7 +666,7 @@ async fn test_complex_insert() {
 
     // 创建测试商品
     let product = create_test_product();
-    Product::prepare::<_, Product>(&db)
+    Product::prepare::<Product>(&db)
         .insert(&["id", "name", "description", "price", "stock", "created_at"])
         .values(vec![
             Value::Bigint(1),
@@ -694,4 +694,64 @@ async fn test_complex_insert() {
     let item = added_item.unwrap();
     dbg!(&item);
     assert_eq!(item.product_id, product.id);
+}
+
+#[tokio::test]
+#[serial]
+async fn test_complex_sql() {
+    #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+    struct Pay {
+        id: i64,
+        order_id: i64,
+        amount: f64,
+        payment_method: String,
+        transaction_id: String,
+        // #[serde(with = "chrono::serde::ts_seconds")]
+        // paid_at: DateTime<Utc>,
+    }
+
+    let db = setup_test_db().await;
+
+    // 创建测试订单
+    let order_id = 1;
+
+    // 进行支付
+    let mut payment = create_test_payment();
+    payment.order_id = order_id;
+    let result = Payment::create(&db, &payment).await;
+    assert!(result.is_ok());
+    let mut payment1 = create_test_payment();
+    payment1.amount = 100.0;
+    payment1.id = 2;
+    payment1.order_id = 2;
+    Payment::create(&db, &payment1).await.unwrap();
+
+    let result: Vec<Pay> = Payment::prepare(&db)
+        .select(&[
+            "id",
+            "order_id",
+            "amount",
+            "payment_method",
+            "transaction_id",
+            // "paid_at"
+        ])
+        .where_clauses(vec!["id <", "order_id <", "amount >="])
+        .order_by(vec!["amount  desc"])
+        // .group_by(vec!["id"])
+        // .having(vec!["order_id ="])
+        .limit(2)
+        .offset(1)
+        .values(vec![
+            Value::Bigint(10),
+            Value::Bigint(10),
+            Value::Double(100.00),
+            // Value::Bigint(2),
+        ])
+        .query()
+        .await
+        .unwrap();
+    assert_eq!(result.len(), 1);
+    assert_eq!(result[0].order_id, 2);
+
+    dbg!(&result);
 }

@@ -142,26 +142,22 @@ where
             .push(format!("JOIN {} ON {}", table, on_condition));
         self
     }
-    
+
     pub fn left_join(mut self, table: &str, on_condition: &str) -> Self {
         self.joins
             .push(format!("LEFT JOIN {} ON {}", table, on_condition));
         self
     }
-    
+
     pub fn cross_join(mut self, table: &str) -> Self {
-        self.joins
-            .push(format!("CROSS JOIN {} ", table));
+        self.joins.push(format!("CROSS JOIN {} ", table));
         self
     }
-    
+
     pub fn natural_join(mut self, table: &str) -> Self {
-        self.joins
-            .push(format!("NATURAL JOIN {} ", table));
+        self.joins.push(format!("NATURAL JOIN {} ", table));
         self
     }
-
-
 
     /// 设置 LIMIT
     pub fn limit(mut self, limit: u32) -> Self {
