@@ -23,6 +23,7 @@ impl SqliteDatabase {
     fn value_to_sql(value: &Value) -> Box<dyn ToSql> {
         match value {
             Value::Null => Box::new(None::<String>),
+            Value::Int(i) => Box::new(*i),
             Value::Bigint(i) => Box::new(*i),
             Value::Float(f) => Box::new(*f),
             Value::Double(f) => Box::new(*f),

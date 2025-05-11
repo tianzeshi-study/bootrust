@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt,error::Error};
 
 pub struct DatabaseConfig {
     pub host: String,
@@ -83,7 +83,15 @@ impl fmt::Display for DbError {
         }
     }
 }
-// 定义通用的数据库值类型
+
+impl Error for DbError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        None
+    }
+}
+
+
+
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum Value {
     Null,
