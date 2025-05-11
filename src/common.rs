@@ -1,4 +1,4 @@
-use std::{fmt,error::Error};
+use std::{error::Error, fmt};
 
 pub struct DatabaseConfig {
     pub host: String,
@@ -89,8 +89,6 @@ impl Error for DbError {
         None
     }
 }
-
-
 
 #[derive(Debug, Clone, PartialEq, serde::Deserialize, serde::Serialize)]
 pub enum Value {

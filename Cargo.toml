@@ -6,7 +6,7 @@ authors = ["Hal Articode <halarticode@aiursoft.tech>"]
 categories = ["orm"]
 description = "An elegant macroless  data access layer abstraction, simple and easy-use  object-relational mapping powered by the Serde serialization framework. 一个优雅的无宏的数据访问层抽象, 由serde序列化框架提供支持的简单易用的对象关系映射"
 keywords = ["orm", "database", "data access", "serde"]
-license = "AGPL2.0"
+license = "mit"
 repository = "https://github.com/tianzeshi-study/bootrust"
 
 [dependencies]
